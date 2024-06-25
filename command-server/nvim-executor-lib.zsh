@@ -2,7 +2,9 @@
 
 source "$(dirname "$(whence -p mux)")/../lib/executor-lib.zsh"
 
-export MUX_SESSION_ID="s:"
+zmodload zsh/net/socket
+
+export MUX_SESSION_ID="s:0"
 typeset -ga all_info_keys=(icon icon_color title title_style)
 
 function .get() {
@@ -41,7 +43,7 @@ function .nvim-comm() {
 
     {
         cat >&$conn_fd
-        printf '\0' >&$conn_fd
+        printf '\0\0\0' >&$conn_fd
 
         local status_code
         read -u $conn_fd status_code

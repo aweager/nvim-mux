@@ -1,7 +1,7 @@
 local M = {}
 
 local function dict_at(location)
-	local scope = location[1]
+	local scope = string.sub(location, 1, 1)
 	local id = tonumber(string.sub(location, 3))
 
 	if id == nil then
@@ -31,7 +31,7 @@ local function dict_at(location)
 end
 
 local function dicts_under(location)
-	local scope = location[1]
+	local scope = string.sub(location, 1, 1)
 	local id = tonumber(string.sub(location, 3))
 
 	if id == nil then
@@ -39,7 +39,7 @@ local function dicts_under(location)
 	end
 
 	if scope == "s" then
-		return { vim.g, vim.t, vim.w, vim.b }
+		return { vim.g, vim.t[0], vim.w[0], vim.b[0] }
 	elseif scope == "t" then
 		if not vim.api.nvim_tabpage_is_valid(id) then
 			return nil
@@ -72,7 +72,7 @@ end
 
 local function coalesce(root, ...)
 	local result = root or {}
-	for _, segment in pairs(arg) do
+	for _, segment in pairs({ ... }) do
 		result = result[segment] or {}
 	end
 	return result
@@ -80,7 +80,7 @@ end
 
 local function get_lines(body)
 	local result = {}
-	for _, line in string.gmatch(body, "[^\n]") do
+	for line in string.gmatch(body, "[^\n]+") do
 		table.insert(result, line)
 	end
 	return result
@@ -98,7 +98,7 @@ function M.get(body)
 	end
 
 	if #keys == 0 then
-		return ""
+		return 0
 	end
 
 	local values = coalesce(dict.mux, namespace)
@@ -126,13 +126,15 @@ function M.resolve(body)
 	end
 
 	if #keys == 0 then
-		return ""
+		return 0
 	end
 
 	local value_dicts = {}
 	for _, dict in pairs(dicts) do
-		value_dicts = coalesce(dict.mux, namespace)
+		table.insert(value_dicts, coalesce(dict.mux, namespace))
 	end
+
+	vim.print(value_dicts)
 
 	local records = {}
 	for _, key in pairs(keys) do
@@ -184,21 +186,22 @@ function M.set(body)
 		mux[namespace] = {}
 	end
 
-	for _, record in string.gmatch(lines[3], "[^\0]") do
-		if not record then
-			goto continue
+	local start_ind = 1
+	local records_block = lines[3]
+	while start_ind <= #records_block do
+		local end_ind = string.find(records_block, "\0", start_ind) or (#records_block + 1)
+		local record = string.sub(records_block, start_ind, end_ind - 1)
+		if record then
+			local space_ind = string.find(record, " ")
+			if space_ind ~= nil then
+				local key = string.sub(record, 1, space_ind - 1)
+				local value = string.sub(record, space_ind + 1)
+				mux[namespace][key] = value
+			else
+				mux[namespace][record] = nil
+			end
 		end
-
-		local space_ind = string.find(record, " ")
-		if space_ind ~= nil then
-			local key = string.sub(record, 1, space_ind)
-			local value = string.sub(record, space_ind + 1)
-			mux[namespace][key] = value
-		else
-			mux[namespace][record] = nil
-		end
-
-		::continue::
+		start_ind = end_ind + 1
 	end
 
 	dict.mux = mux

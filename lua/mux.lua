@@ -44,7 +44,7 @@ function M.setup()
 		return
 	end
 
-	local augroup = vim.api.nvim_create_augroup("RegApi", {})
+	local augroup = vim.api.nvim_create_augroup("MuxApi", {})
 
 	vim.api.nvim_create_autocmd("VimLeave", {
 		group = augroup,

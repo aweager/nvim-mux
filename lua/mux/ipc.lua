@@ -12,7 +12,7 @@ function M.start_server(socket_path, processor)
 		local result = processor(request)
 		local response
 		if type(result) == "number" then
-			response = "" .. result .. "\n"
+			response = "" .. result
 		else
 			response = "0\n" .. result
 		end
@@ -41,8 +41,8 @@ function M.start_server(socket_path, processor)
 				vim.uv.close(client_stream)
 			elseif chunk then
 				data = data .. chunk
-				if string.sub(data, -1) == "\0" then
-					data = string.sub(data, 1, -2)
+				if string.sub(data, -3) == "\0\0\0" then
+					data = string.sub(data, 1, -4)
 					client_stream:read_stop()
 					vim.schedule(function()
 						process_request(data, client_stream)
