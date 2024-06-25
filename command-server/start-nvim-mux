@@ -1,0 +1,17 @@
+#!/bin/zsh
+
+setopt err_exit
+
+export NVIM_IPC_SOCKET="$1"
+local log_file="$2"
+local parent_socket="$3"
+
+command-server-start \
+    "${0:a:h}/server.conf" \
+    --socket "$MUX_SOCKET" \
+    --log-file "$log_file" \
+    3>&1
+
+if [[ -n "$parent_socket" ]]; then
+    mux -b publish
+fi

@@ -1,0 +1,6 @@
+#!/bin/zsh
+
+source "${0:h}/nvim-executor-lib.zsh"
+
+set -- mux-impl "$@"
+source "${COMMAND_SERVER_LIB}/posix-executor-loop.sh"

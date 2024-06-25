@@ -1,0 +1,3 @@
+#!/bin/zsh
+
+exec command-server-terminate "$REG_SOCKET"
