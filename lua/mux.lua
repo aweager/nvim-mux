@@ -23,6 +23,7 @@ local function prep_files()
 
 	-- TODO use uv
 	os.execute("mkdir -p '" .. M.rundir .. "'")
+	os.execute("chmod 1700 '" .. M.rundir .. "'")
 	os.execute("mkdir -p '" .. M.logdir .. "'")
 
 	M.mux_socket = M.rundir .. "/" .. pid .. ".mux.sock"
@@ -45,6 +46,34 @@ function M.setup()
 	end
 
 	local augroup = vim.api.nvim_create_augroup("MuxApi", {})
+
+	-- Somewhat hacky: set MUX_LOCATION to the buffer number so it gets
+	-- inherited by the forked process when it starts, then unset it after
+	-- it has been read in so that random jobs spun up don't have that value
+	vim.api.nvim_create_autocmd("BufNew", {
+		group = augroup,
+		callback = function(args)
+			vim.env.MUX_LOCATION = "b:" .. args.buf
+		end,
+	})
+	vim.api.nvim_create_autocmd("VimEnter", {
+		group = augroup,
+		callback = function()
+			vim.env.MUX_LOCATION = nil
+		end,
+	})
+	vim.api.nvim_create_autocmd("BufReadPost", {
+		group = augroup,
+		callback = function()
+			vim.env.MUX_LOCATION = nil
+		end,
+	})
+	vim.api.nvim_create_autocmd("TermOpen", {
+		group = augroup,
+		callback = function()
+			vim.env.MUX_LOCATION = nil
+		end,
+	})
 
 	vim.api.nvim_create_autocmd("VimLeave", {
 		group = augroup,

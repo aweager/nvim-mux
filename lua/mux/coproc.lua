@@ -7,9 +7,10 @@ end
 
 function M.start_coproc(mux_socket, ipc_socket, log_file)
 	M.parent_mux_socket = vim.env.MUX_SOCKET or ""
-	M.parent_mux_buffer = vim.env.MUX_BUFFER or ""
+	M.parent_mux_location = vim.env.MUX_LOCATION or ""
 	vim.env.MUX_SOCKET = mux_socket
-	vim.env.MUX_BUFFER = nil
+	vim.env.MUX_LOCATION = nil
+	vim.env.MUX_TYPE = "nvim"
 
 	local bin = command_server_dir()
 	local out = vim.uv.new_pipe(false)

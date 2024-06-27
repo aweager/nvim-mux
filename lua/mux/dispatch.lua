@@ -1,10 +1,41 @@
 local M = {}
 
-local function dict_at(location)
-	local scope = string.sub(location, 1, 1)
-	local id = tonumber(string.sub(location, 3))
+local function pid_to_buffer(pid)
+	for _, buf in pairs(vim.api.nvim_list_bufs()) do
+		if vim.b[buf].terminal_job_pid == pid then
+			return nil
+		end
+	end
+	return nil
+end
 
-	if id == nil then
+local function parse_location(location)
+	local colon_ind = string.find(location, ":")
+	if colon_ind == nil then
+		return nil
+	end
+
+	local scope = string.sub(location, 1, colon_ind - 1)
+	local id = tonumber(string.sub(location, colon_ind + 1))
+	if scope == nil or id == nil then
+		return nil
+	end
+
+	if scope == "pid" then
+		scope = "b"
+		id = pid_to_buffer(id)
+		if id == nil then
+			return nil
+		end
+	end
+
+	return scope, id
+end
+
+local function dict_at(location)
+	local scope, id = parse_location(location)
+
+	if scope == nil or id == nil then
 		return nil
 	end
 
@@ -31,10 +62,9 @@ local function dict_at(location)
 end
 
 local function dicts_under(location)
-	local scope = string.sub(location, 1, 1)
-	local id = tonumber(string.sub(location, 3))
+	local scope, id = parse_location(location)
 
-	if id == nil then
+	if scope == nil or id == nil then
 		return nil
 	end
 
@@ -205,13 +235,14 @@ function M.set(body)
 	end
 
 	dict.mux = mux
+	vim.cmd.redrawtabline()
 	return 0
 end
 
 function M.list_parents()
 	local coproc = require("mux.coproc")
 	if coproc.parent_mux_socket then
-		return coproc.parent_mux_socket .. "\n" .. coproc.parent_mux_buffer .. "\n"
+		return coproc.parent_mux_socket .. "\n" .. coproc.parent_mux_location .. "\n"
 	end
 end
 
