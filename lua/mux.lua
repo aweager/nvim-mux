@@ -46,6 +46,16 @@ function M.setup()
 	end
 
 	local augroup = vim.api.nvim_create_augroup("MuxApi", {})
+	local api = require("mux.api")
+
+	vim.api.nvim_create_autocmd("WinEnter", {
+		group = augroup,
+		callback = api.publish,
+	})
+	vim.api.nvim_create_autocmd("BufWinEnter", {
+		group = augroup,
+		callback = api.publish,
+	})
 
 	-- Somewhat hacky: set MUX_LOCATION to the buffer number so it gets
 	-- inherited by the forked process when it starts, then unset it after
@@ -60,6 +70,7 @@ function M.setup()
 		group = augroup,
 		callback = function()
 			vim.env.MUX_LOCATION = nil
+			api.publish()
 		end,
 	})
 	vim.api.nvim_create_autocmd("BufReadPost", {
@@ -75,6 +86,7 @@ function M.setup()
 		end,
 	})
 
+	-- Bring down server when vim is closed
 	vim.api.nvim_create_autocmd("VimLeave", {
 		group = augroup,
 		callback = function()
