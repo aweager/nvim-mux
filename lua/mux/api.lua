@@ -1,5 +1,7 @@
 local M = {}
 
+local coproc = require("mux.coproc")
+
 local function get_default_icon_color(buffer)
 	if vim.bo[buffer].buftype == "terminal" then
 		return "", "lightgreen"
@@ -211,6 +213,7 @@ function M.set(location, namespace, values)
 	mux[namespace] = values
 	dict.mux = mux
 	vim.cmd.redrawtabline()
+	M.publish()
 	return true
 end
 
@@ -230,6 +233,7 @@ function M.merge(location, namespace, values)
 	end
 	dict.mux = mux
 	vim.cmd.redrawtabline()
+	M.publish()
 	return true
 end
 
@@ -238,14 +242,25 @@ function M.merge_info(location, values)
 end
 
 function M.publish()
-	local handle
-	handle = vim.loop.spawn("mux", {
-		args = { "publish" },
-	}, function()
-		if handle ~= nil then
-			handle:close()
-		end
-	end)
+	if coproc.parent_mux_socket then
+		local handle
+		handle = vim.uv.spawn("mux", {
+			args = {
+				"publish",
+				"s:0",
+				coproc.parent_mux_socket,
+				coproc.parent_mux_location,
+				"icon",
+				"icon_color",
+				"title",
+				"title_style",
+			},
+		}, function(err, signal)
+			if handle ~= nil then
+				handle:close()
+			end
+		end)
+	end
 end
 
 return M

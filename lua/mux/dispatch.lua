@@ -105,12 +105,4 @@ function M.set(body)
 	return 1
 end
 
-function M.list_parents()
-	local coproc = require("mux.coproc")
-	if coproc.parent_mux_socket then
-		return coproc.parent_mux_socket .. "\n" .. coproc.parent_mux_location .. "\n"
-	end
-end
-
-M.links = ""
 return M
