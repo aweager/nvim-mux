@@ -255,6 +255,7 @@ function M.publish()
 		local handle
 		handle = vim.uv.spawn("mux", {
 			args = {
+				"-bb",
 				"publish",
 				"s:0",
 				coproc.parent_mux_socket,
