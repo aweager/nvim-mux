@@ -57,35 +57,6 @@ function M.setup()
 		callback = api.publish,
 	})
 
-	-- Somewhat hacky: set MUX_LOCATION to the buffer number so it gets
-	-- inherited by the forked process when it starts, then unset it after
-	-- it has been read in so that random jobs spun up don't have that value
-	vim.api.nvim_create_autocmd("BufNew", {
-		group = augroup,
-		callback = function(args)
-			vim.env.MUX_LOCATION = "b:" .. args.buf
-		end,
-	})
-	vim.api.nvim_create_autocmd("VimEnter", {
-		group = augroup,
-		callback = function()
-			vim.env.MUX_LOCATION = nil
-			api.publish()
-		end,
-	})
-	vim.api.nvim_create_autocmd("BufReadPost", {
-		group = augroup,
-		callback = function()
-			vim.env.MUX_LOCATION = nil
-		end,
-	})
-	vim.api.nvim_create_autocmd("TermOpen", {
-		group = augroup,
-		callback = function()
-			vim.env.MUX_LOCATION = nil
-		end,
-	})
-
 	-- Bring down server when vim is closed
 	vim.api.nvim_create_autocmd("VimLeave", {
 		group = augroup,

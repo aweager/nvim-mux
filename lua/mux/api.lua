@@ -57,6 +57,15 @@ local function get_defaults(buffer)
 	}
 end
 
+local function pid_to_buffer(pid)
+	for _, buf in pairs(vim.api.nvim_list_bufs()) do
+		if vim.b[buf].terminal_job_pid == pid then
+			return buf
+		end
+	end
+	return nil
+end
+
 local function parse_location(location)
 	local colon_ind = string.find(location, ":")
 	if colon_ind == nil then
