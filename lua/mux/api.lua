@@ -251,7 +251,7 @@ function M.merge_info(location, values)
 end
 
 function M.publish()
-	if coproc.parent_mux_socket then
+	if coproc.parent_mux_socket and #coproc.parent_mux_socket > 0 then
 		local handle
 		handle = vim.uv.spawn("mux", {
 			args = {
