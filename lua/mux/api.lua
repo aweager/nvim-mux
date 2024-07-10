@@ -252,24 +252,18 @@ end
 
 function M.publish()
 	if coproc.parent_mux_socket and #coproc.parent_mux_socket > 0 then
-		local handle
-		handle = vim.uv.spawn("mux", {
-			args = {
-				"-bb",
-				"publish",
-				"s:0",
-				coproc.parent_mux_socket,
-				coproc.parent_mux_location,
-				"icon",
-				"icon_color",
-				"title",
-				"title_style",
-			},
-		}, function(err, signal)
-			if handle ~= nil then
-				handle:close()
-			end
-		end)
+		vim.system({
+			"mux",
+			"-bb",
+			"publish",
+			"s:0",
+			coproc.parent_mux_socket,
+			coproc.parent_mux_location,
+			"icon",
+			"icon_color",
+			"title",
+			"title_style",
+		}):wait()
 	end
 end
 
