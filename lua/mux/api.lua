@@ -237,6 +237,10 @@ function M.merge(location, namespace, values)
 	end
 
 	local mux = dict.mux
+	if mux[namespace] == nil then
+		mux[namespace] = {}
+	end
+
 	for key, value in pairs(values) do
 		mux[namespace][key] = value
 	end
