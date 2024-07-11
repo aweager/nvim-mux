@@ -1,6 +1,7 @@
 local M = {}
 
 local coproc = require("mux.coproc")
+local custom_callbacks = {}
 
 local function get_default_icon_color(buffer)
 	if vim.bo[buffer].buftype == "terminal" then
@@ -218,6 +219,7 @@ function M.set(location, namespace, values)
 		return false
 	end
 
+	-- TODO invoke callbacks
 	local mux = coalesce(dict.mux)
 	mux[namespace] = values
 	dict.mux = mux
@@ -243,6 +245,9 @@ function M.merge(location, namespace, values)
 
 	for key, value in pairs(values) do
 		mux[namespace][key] = value
+		for _, callback in pairs(coalesce(custom_callbacks, namespace, key)) do
+			callback(location, key, value)
+		end
 	end
 	dict.mux = mux
 	vim.cmd.redrawtabline()
@@ -271,6 +276,13 @@ function M.publish()
 
 		vim.system(command):wait()
 	end
+end
+
+function M.register_user_callback(key, callback)
+	local callback_list = coalesce(custom_callbacks, "USER", key)
+	table.insert(callback_list, callback)
+	custom_callbacks["USER"] = coalesce(custom_callbacks, "USER")
+	custom_callbacks["USER"][key] = callback_list
 end
 
 return M
