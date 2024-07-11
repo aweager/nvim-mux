@@ -256,18 +256,20 @@ end
 
 function M.publish()
 	if coproc.parent_mux_socket and #coproc.parent_mux_socket > 0 then
-		vim.system({
+		local command = {
 			"mux",
-			"-bb",
-			"publish",
-			"s:0",
+			"-I",
 			coproc.parent_mux_socket,
+			"set-info",
 			coproc.parent_mux_location,
-			"icon",
-			"icon_color",
-			"title",
-			"title_style",
-		}):wait()
+		}
+
+		for key, val in pairs(assert(M.resolve_info("s:0"))) do
+			table.insert(command, key)
+			table.insert(command, val)
+		end
+
+		vim.system(command):wait()
 	end
 end
 
