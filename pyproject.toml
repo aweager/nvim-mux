@@ -1,0 +1,33 @@
+[project]
+name = "nvim_mux"
+version = "0.0.1"
+authors = [
+  { name="Alex Eager" },
+]
+description = "neovim implementation of mux API"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "result",
+    #"jrpc @ TODO",
+    #"mux @ TODO",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["nvim_mux"]
+
+[project.urls]
+Homepage = "https://github.com/aweager/nvim-mux"
+Issues = "https://github.com/aweager/nvim-mux/issues"
+
+[tools.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR"
