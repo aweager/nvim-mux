@@ -31,9 +31,14 @@ function M.setup()
             group = augroup,
             callback = api.publish,
         })
+        vim.api.nvim_create_autocmd("BufModifiedSet", {
+            group = augroup,
+            callback = api.publish,
+        })
         vim.api.nvim_create_autocmd("VimLeave", {
             group = augroup,
             callback = function()
+                ---@diagnostic disable-next-line: missing-parameter # this is the correct way to call
                 handle:kill()
             end,
         })
