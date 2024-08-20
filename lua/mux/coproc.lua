@@ -16,6 +16,8 @@ function M.start_coproc(mux_socket, log_file)
     end
 
     M.coproc_handle = vim.system(cmd, {})
+
+    return M.coproc_handle
 end
 
 return M

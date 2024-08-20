@@ -17,19 +17,27 @@ end
 function M.setup()
     prep_files()
 
-    require("mux.coproc").start_coproc(M.mux_socket, M.coproc_log)
+    local handle = require("mux.coproc").start_coproc(M.mux_socket, M.coproc_log)
 
-    local augroup = vim.api.nvim_create_augroup("MuxApi", {})
-    local api = require("mux.api")
+    if handle ~= nil then
+        local augroup = vim.api.nvim_create_augroup("MuxApi", {})
+        local api = require("mux.api")
 
-    vim.api.nvim_create_autocmd("WinEnter", {
-        group = augroup,
-        callback = api.publish,
-    })
-    vim.api.nvim_create_autocmd("BufWinEnter", {
-        group = augroup,
-        callback = api.publish,
-    })
+        vim.api.nvim_create_autocmd("WinEnter", {
+            group = augroup,
+            callback = api.publish,
+        })
+        vim.api.nvim_create_autocmd("BufWinEnter", {
+            group = augroup,
+            callback = api.publish,
+        })
+        vim.api.nvim_create_autocmd("VimLeave", {
+            group = augroup,
+            callback = function()
+                handle:kill()
+            end,
+        })
+    end
 end
 
 return M
