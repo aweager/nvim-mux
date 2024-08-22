@@ -17,9 +17,7 @@ class NvimNamespace(VariableNamespace):
     name: str
 
     @override
-    async def get_multiple(
-        self, keys: list[str]
-    ) -> Result[dict[str, str | None], MuxApiError]:
+    async def get_multiple(self, keys: list[str]) -> Result[dict[str, str | None], MuxApiError]:
         result = await self.client.get_all_vars(self.ref, self.name)
 
         match result:
@@ -42,9 +40,7 @@ class NvimNamespace(VariableNamespace):
         return await self.client.get_all_vars(self.ref, self.name)
 
     @override
-    async def resolve_multiple(
-        self, keys: list[str]
-    ) -> Result[dict[str, str | None], MuxApiError]:
+    async def resolve_multiple(self, keys: list[str]) -> Result[dict[str, str | None], MuxApiError]:
         result = await self.client.resolve_all_vars(self.ref, self.name)
 
         match result:
@@ -82,9 +78,7 @@ class NvimNamespace(VariableNamespace):
         await self.parent_mux_info.clear_and_replace(session_info)
 
     @override
-    async def set_multiple(
-        self, values: dict[str, str | None]
-    ) -> Result[None, MuxApiError]:
+    async def set_multiple(self, values: dict[str, str | None]) -> Result[None, MuxApiError]:
         final_result = await self.client.set_multiple_vars(self.ref, self.name, values)
 
         if self.name == "INFO":
@@ -93,12 +87,8 @@ class NvimNamespace(VariableNamespace):
         return final_result
 
     @override
-    async def clear_and_replace(
-        self, values: dict[str, str]
-    ) -> Result[None, MuxApiError]:
-        final_result = await self.client.clear_and_replace_vars(
-            self.ref, self.name, values
-        )
+    async def clear_and_replace(self, values: dict[str, str]) -> Result[None, MuxApiError]:
+        final_result = await self.client.clear_and_replace_vars(self.ref, self.name, values)
 
         if self.name == "INFO":
             await self._publish()
@@ -134,9 +124,7 @@ class NvimMux(Mux):
             case Err() as err:
                 return err
 
-    async def publish_to_parent(
-        self, values: dict[str, str]
-    ) -> Result[None, MuxApiError]:
+    async def publish_to_parent(self, values: dict[str, str]) -> Result[None, MuxApiError]:
         if not self.parent_mux_info:
             return Ok(None)
 

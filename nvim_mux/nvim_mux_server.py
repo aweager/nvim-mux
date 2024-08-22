@@ -64,9 +64,7 @@ async def main(
 ) -> int:
     logging.basicConfig(filename=log_file, level=logging.DEBUG)
 
-    server_result = await start_mux_server(
-        socket_path, parent_mux_instance, parent_mux_location
-    )
+    server_result = await start_mux_server(socket_path, parent_mux_instance, parent_mux_location)
     match server_result:
         case Ok(server):
             _LOGGER.info("Server started")

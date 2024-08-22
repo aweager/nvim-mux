@@ -34,9 +34,7 @@ class NvimExtensionRpcProcessor:
         match params_type.try_load(params):
             case Ok(loaded_params):
                 result = await self._process_params(loaded_params)
-                return result.map(DataClassJsonMixin.to_dict).map_err(
-                    MuxApiError.to_json_rpc_error
-                )
+                return result.map(DataClassJsonMixin.to_dict).map_err(MuxApiError.to_json_rpc_error)
             case Err(schema_error):
                 return Err(invalid_params(schema_error))
 

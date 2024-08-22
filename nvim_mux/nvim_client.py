@@ -61,9 +61,7 @@ def parse_reference(raw_value: str) -> Result[Reference, MuxApiError]:
         return Err(MuxApiError.from_data(InvalidNvimLocation(raw_value)))
 
     return Ok(
-        Reference(
-            raw_value=raw_value, target_id=target_id, scope=_SCOPE_BY_REF_PREFIX[prefix]
-        )
+        Reference(raw_value=raw_value, target_id=target_id, scope=_SCOPE_BY_REF_PREFIX[prefix])
     )
 
 
@@ -92,9 +90,7 @@ class NvimClient:
     async def call_api(
         self, api_func: str, output_type: type[TOutput], *args: Any
     ) -> Result[TOutput, MuxApiError]:
-        result = await self.exec_lua(
-            f"return require('mux.api.internal').{api_func}(...)", *args
-        )
+        result = await self.exec_lua(f"return require('mux.api.internal').{api_func}(...)", *args)
 
         match result:
             case Ok(lua_output):
@@ -103,11 +99,7 @@ class NvimClient:
                 return Err(MuxApiError.from_data(lua_api_error))
 
         if not isinstance(lua_output, Mapping):
-            return Err(
-                MuxApiError.from_data(
-                    NvimLuaInvalidResponse(api_func, repr(lua_output))
-                )
-            )
+            return Err(MuxApiError.from_data(NvimLuaInvalidResponse(api_func, repr(lua_output))))
 
         if "result" in lua_output:
             match output_type.try_load(lua_output["result"]):
@@ -115,9 +107,7 @@ class NvimClient:
                     return Ok(loaded_result)
                 case Err():
                     return Err(
-                        MuxApiError.from_data(
-                            NvimLuaInvalidResponse(api_func, repr(lua_output))
-                        )
+                        MuxApiError.from_data(NvimLuaInvalidResponse(api_func, repr(lua_output)))
                     )
 
         if "error" in lua_output:
@@ -126,14 +116,10 @@ class NvimClient:
                     return Err(MuxApiError.from_json_rpc_error(json_rpc_error))
                 case Err():
                     return Err(
-                        MuxApiError.from_data(
-                            NvimLuaInvalidResponse(api_func, repr(lua_output))
-                        )
+                        MuxApiError.from_data(NvimLuaInvalidResponse(api_func, repr(lua_output)))
                     )
 
-        return Err(
-            MuxApiError.from_data(NvimLuaInvalidResponse(api_func, repr(lua_output)))
-        )
+        return Err(MuxApiError.from_data(NvimLuaInvalidResponse(api_func, repr(lua_output))))
 
     async def get_all_vars(
         self, ref: Reference, namespace: str
@@ -218,9 +204,7 @@ class NvimClient:
 
         return Ok(None)
 
-    async def get_location_info(
-        self, ref: Reference
-    ) -> Result[LocationInfoResult, MuxApiError]:
+    async def get_location_info(self, ref: Reference) -> Result[LocationInfoResult, MuxApiError]:
         return await self.call_api(
             "get_location_info", LocationInfoResult, ref.scope.value, ref.target_id
         )
