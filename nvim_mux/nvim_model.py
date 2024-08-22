@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from typing import override
 
 from mux.api import LocationInfoResult
 from mux.errors import MuxApiError
 from mux.model import Location, Mux, VariableNamespace
 from result import Err, Ok, Result
+from typing_extensions import override
 
 from .nvim_client import NvimClient, Reference, Scope, parse_reference
 
