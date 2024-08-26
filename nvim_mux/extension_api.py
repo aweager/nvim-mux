@@ -1,11 +1,9 @@
 from dataclasses import dataclass
-from enum import StrEnum
 
+from jrpc.client import MethodDescriptor
 from jrpc.data import JsonTryLoadMixin
-
-
-class NvimExtensionMethodName(StrEnum):
-    PUBLISH_TO_PARENT = "nvim.publish-to-parent"
+from jrpc.service import JsonTryConverter
+from mux.errors import ERROR_CONVERTER
 
 
 @dataclass
@@ -16,3 +14,12 @@ class PublishToParentParams(JsonTryLoadMixin):
 @dataclass
 class PublishToParentResult(JsonTryLoadMixin):
     pass
+
+
+class NvimExtensionMethod:
+    PUBLISH_TO_PARENT = MethodDescriptor(
+        name="nvim.publish-to-parent",
+        params_converter=JsonTryConverter(PublishToParentParams),
+        result_converter=JsonTryConverter(PublishToParentResult),
+        error_converter=ERROR_CONVERTER,
+    )

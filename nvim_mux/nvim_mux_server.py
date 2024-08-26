@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
 
-from asyncio import Server
 import asyncio
 import logging
-import os
 import pathlib
+from asyncio import Server
 from sys import argv, stderr
 from typing import assert_never
 
 import jrpc
-import mux
-from mux.model import VariableNamespace
-from mux.rpc_processor import MuxRpcProcessor
+from jrpc.client import JsonRpcClient
+from mux.rpc_processor import mux_rpc_processor
 from result import Err, Ok, Result
 
-from nvim_mux.extension_rpc_processor import NvimExtensionRpcProcessor
-
 from .errors import NvimLuaApiError
+from .extension_rpc_processor import ext_rpc_processor
 from .nvim_client import connect_to_nvim
-from .nvim_model import NvimMux
-
+from .nvim_model import NvimMuxApiImpl
 
 _LOGGER = logging.getLogger("nvim-mux-server")
 
@@ -37,22 +33,19 @@ async def start_mux_server(
 
     _LOGGER.info("Connected to nvim in daemon thread")
 
-    parent_mux_info: VariableNamespace | None = None
+    parent_mux_client: JsonRpcClient | None = None
     if parent_mux_instance and parent_mux_location:
         reader, writer = await asyncio.open_unix_connection(parent_mux_instance)
-        parent_mux = mux.client.wrap_streams(reader, writer)
-        match parent_mux.location(parent_mux_location):
-            case Ok(location):
-                parent_mux_info = location.namespace("INFO")
+        parent_mux_client = jrpc.client.wrap_streams(reader, writer)
 
-    model = NvimMux(parent_mux_info, client)
+    impl = NvimMuxApiImpl(parent_mux_client, parent_mux_location, client)
     connection_callback = jrpc.connection.client_connected_callback(
-        MuxRpcProcessor(model),
-        NvimExtensionRpcProcessor(model),
+        mux_rpc_processor(impl),
+        ext_rpc_processor(impl),
     )
 
     # TODO less hacky way of initial publish
-    await model.location("s:0").unwrap().namespace("INFO")._publish()
+    await impl._publish()
     return Ok(await asyncio.start_unix_server(connection_callback, path=socket_path))
 
 

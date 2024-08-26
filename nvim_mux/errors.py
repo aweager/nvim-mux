@@ -10,6 +10,7 @@ class NvimErrorCode(Enum):
     INVALID_NVIM_LOCATION = 30001
     NVIM_LUA_API_ERROR = 30002
     NVIM_LUA_INVALID_RESPONSE = 30003
+    NVIM_OTHER_MUX_SERVER_ERROR = 30004
 
 
 @dataclass
@@ -48,4 +49,16 @@ errors.register_error_type(
     NvimErrorCode.NVIM_LUA_INVALID_RESPONSE.value,
     "Neovim lua API call returned an invalid response",
     NvimLuaInvalidResponse,
+)
+
+
+@dataclass
+class OtherMuxServerError(DataClassJsonMixin):
+    detailed_message: str
+
+
+errors.register_error_type(
+    NvimErrorCode.NVIM_OTHER_MUX_SERVER_ERROR.value,
+    "Other mux call failed",
+    OtherMuxServerError,
 )
