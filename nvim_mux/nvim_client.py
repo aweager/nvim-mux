@@ -1,9 +1,9 @@
 import asyncio
+import logging
 from collections.abc import Mapping
 from concurrent import futures
 from dataclasses import dataclass
 from enum import StrEnum
-import logging
 from queue import SimpleQueue
 from typing import Any, TypeVar
 
@@ -14,7 +14,7 @@ from result import Err, Ok, Result
 
 from . import nvim_thread
 from .errors import InvalidNvimLocation, NvimLuaApiError, NvimLuaInvalidResponse
-from .internal_api import NothingResult, VariableValuesResult
+from .nvim_api import NothingResult, VariableValuesResult
 from .nvim_thread import NvimWorkItem
 
 _LOGGER = logging.getLogger("nvim-client")

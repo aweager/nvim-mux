@@ -24,9 +24,8 @@ from result import Err, Ok, Result
 from typing_extensions import override
 
 from nvim_mux.errors import OtherMuxServerError
-from nvim_mux.extension_api import PublishToParentParams, PublishToParentResult
-
-from .nvim_client import NvimClient, Reference, Scope, parse_reference
+from nvim_mux.ext.api import PublishToParentParams, PublishToParentResult
+from nvim_mux.nvim_client import NvimClient, Reference, Scope, parse_reference
 
 
 @dataclass

@@ -13,9 +13,9 @@ from mux.rpc_processor import mux_rpc_processor
 from result import Err, Ok, Result
 
 from .errors import NvimLuaApiError
-from .extension_rpc_processor import ext_rpc_processor
+from .ext.rpc_processor import ext_rpc_processor
+from .mux.impl import NvimMuxApiImpl
 from .nvim_client import connect_to_nvim
-from .nvim_model import NvimMuxApiImpl
 
 _LOGGER = logging.getLogger("nvim-mux-server")
 

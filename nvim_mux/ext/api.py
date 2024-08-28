@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 
-from jrpc.client import MethodDescriptor
 from jrpc.data import JsonTryLoadMixin
-from jrpc.service import JsonTryConverter
+from jrpc.service import JsonTryConverter, MethodDescriptor
 from mux.errors import ERROR_CONVERTER
 
 

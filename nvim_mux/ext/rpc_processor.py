@@ -1,7 +1,8 @@
 from jrpc.service import JsonRpcProcessor, MethodSet, TypedMethodHandler
 
-from .extension_api import NvimExtensionMethod
-from .nvim_model import NvimMuxApiImpl
+from nvim_mux.mux.impl import NvimMuxApiImpl
+
+from .api import NvimExtensionMethod
 
 
 def ext_rpc_processor(mux_impl: NvimMuxApiImpl) -> JsonRpcProcessor:
