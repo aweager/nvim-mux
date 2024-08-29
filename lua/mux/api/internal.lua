@@ -5,31 +5,61 @@ local M = {}
 ---@type table<string, table<string, CustomCallback[]>>
 local custom_callbacks = {}
 
----@class VariableValuesResult
+---@class VariableValues
 ---@field values table<string, string>
 
----@class LocationInfoResult
+---@class LocationInfo
 ---@field exists boolean
 ---@field id string?
 
----@class JsonRpcError
----@field code integer
----@field message string
----@field data table<string, any>
+---@class Empty : table<string, string>
+
+---@enum NvimErrorCode
+local NvimErrorCode = {
+    LOCATION_DNE = 10003,
+}
+
+---@class NvimError
+---@field code NvimErrorCode
+---@field data LocationDne
+
+---@class LocationDne
+---@field scope Scope
+---@field id integer
 
 local defaults = require("mux.defaults")
 local types = require("mux.types")
 
----Makes a location DNE error
+---@generic T
+---@param value `T`
+---@returns { result: T }
+local function ok(value)
+    return { result = value }
+end
+
+---Returns an empty ok response
+---@return Empty
+local function empty_ok()
+    return { result = { unused = true } }
+end
+
+---@generic E
+---@param error `E`
+---@returns { error: E }
+local function err(error)
+    return { error = error }
+end
+
+---Makes a LocationDne
 ---@param scope Scope
 ---@param id integer
----@return JsonRpcError
+---@return NvimError
 local function location_dne(scope, id)
     return {
-        code = 10003,
-        message = "Location does not exist",
+        code = NvimErrorCode.LOCATION_DNE,
         data = {
-            reference = types.make_location_str(scope, id),
+            scope = scope,
+            id = id,
         },
     }
 end
@@ -125,47 +155,37 @@ end
 ---@param scope Scope
 ---@param id integer
 ---@param namespace string
----@return { result: VariableValuesResult?, error: JsonRpcError? }
+---@return { result: VariableValues } | { error: NvimError }
 function M.get_all_vars(scope, id, namespace)
     local std_scope, std_id = types.standardize_scope(scope, id)
     if std_scope == nil or std_id == nil then
-        return {
-            error = location_dne(scope, id),
-        }
+        return err(location_dne(scope, id))
     end
 
     local dict = dict_at(std_scope, std_id)
     if dict == nil then
-        return {
-            error = location_dne(scope, id),
-        }
+        return err(location_dne(scope, id))
     end
 
-    return {
-        result = {
-            values = coalesce(dict, "mux", namespace),
-        },
-    }
+    return ok({
+        values = coalesce(dict, "mux", namespace),
+    })
 end
 
 ---Resolves the values of variables at the specified location
 ---@param scope Scope
 ---@param id integer
 ---@param namespace string
----@return { result: VariableValuesResult?, error: JsonRpcError? }
+---@return { result: VariableValues } | { error: NvimError }
 function M.resolve_all_vars(scope, id, namespace)
     local std_scope, std_id = types.standardize_scope(scope, id)
     if std_scope == nil or std_id == nil then
-        return {
-            error = location_dne(scope, id),
-        }
+        return err(location_dne(scope, id))
     end
 
     local dicts = dicts_under(std_scope, std_id)
     if dicts == nil then
-        return {
-            error = location_dne(std_scope, std_id),
-        }
+        return err(location_dne(std_scope, std_id))
     end
 
     local resolved_values = {}
@@ -178,11 +198,7 @@ function M.resolve_all_vars(scope, id, namespace)
         end
     end
 
-    return {
-        result = {
-            values = resolved_values,
-        },
-    }
+    return ok({ values = resolved_values })
 end
 
 ---Clears out the existing values and replaces them
@@ -190,20 +206,16 @@ end
 ---@param id integer
 ---@param namespace string
 ---@param values table<string, string>
----@return { result: table<string, string>?, error: JsonRpcError? }
+---@return { result: Empty } | { error: NvimError }
 function M.clear_and_replace_vars(scope, id, namespace, values)
     local std_scope, std_id = types.standardize_scope(scope, id)
     if std_scope == nil or std_id == nil then
-        return {
-            error = location_dne(scope, id),
-        }
+        return err(location_dne(scope, id))
     end
 
     local dict = dict_at(std_scope, std_id)
     if dict == nil then
-        return {
-            error = location_dne(scope, id),
-        }
+        return err(location_dne(scope, id))
     end
 
     -- TODO invoke callbacks
@@ -211,11 +223,7 @@ function M.clear_and_replace_vars(scope, id, namespace, values)
     mux[namespace] = values
     dict.mux = mux
     vim.cmd.redrawtabline()
-    return {
-        result = {
-            unused = "",
-        },
-    }
+    return empty_ok()
 end
 
 ---Sets multiple values
@@ -223,20 +231,16 @@ end
 ---@param id integer
 ---@param namespace string
 ---@param values table<string, string>
----@return { result: table<string, string>?, error: JsonRpcError? }
+---@return { result: Empty } | { error: NvimError }
 function M.set_multiple_vars(scope, id, namespace, values)
     local std_scope, std_id = types.standardize_scope(scope, id)
     if std_scope == nil or std_id == nil then
-        return {
-            error = location_dne(scope, id),
-        }
+        return err(location_dne(scope, id))
     end
 
     local dict = dict_at(std_scope, std_id)
     if dict == nil then
-        return {
-            error = location_dne(scope, id),
-        }
+        return err(location_dne(scope, id))
     end
 
     local mux = coalesce(dict, "mux")
@@ -253,41 +257,31 @@ function M.set_multiple_vars(scope, id, namespace, values)
     end
     dict.mux = mux
     vim.cmd.redrawtabline()
-    return {
-        result = {
-            unused = "",
-        },
-    }
+    return empty_ok()
 end
 
 ---Get info on a location
 ---@param scope Scope
 ---@param id integer
----@return { result: LocationInfoResult }
+---@return { result: LocationInfo }
 function M.get_location_info(scope, id)
     local std_scope, std_id = types.standardize_scope(scope, id)
     if std_scope == nil or std_id == nil then
-        return {
-            result = {
-                exists = false,
-            },
-        }
+        return ok({
+            exists = false,
+        })
     end
 
     if dict_at(std_scope, std_id) == nil then
-        return {
-            result = {
-                exists = false,
-            },
-        }
+        return ok({
+            exists = false,
+        })
     end
 
-    return {
-        result = {
-            exists = true,
-            id = types.make_location_str(std_scope, std_id),
-        },
-    }
+    return ok({
+        exists = true,
+        id = types.make_location_str(std_scope, std_id),
+    })
 end
 
 ---Register a callback for whenever a USER value is changed

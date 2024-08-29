@@ -25,6 +25,7 @@ from typing_extensions import override
 
 from nvim_mux.errors import OtherMuxServerError
 from nvim_mux.ext.api import PublishToParentParams, PublishToParentResult
+from nvim_mux.mux.mux_client import MuxClient
 from nvim_mux.nvim_client import NvimClient, Reference, Scope, parse_reference
 
 
@@ -34,12 +35,15 @@ class NvimMuxApiImpl(MuxApi):
     parent_mux_location: str | None
     vim: NvimClient
 
+    def __post_init__(self) -> None:
+        self.vim_mux = MuxClient(self.vim)
+
     @override
     async def get_multiple(
         self, params: GetMultipleParams
     ) -> Result[GetMultipleResult, MuxApiError]:
         result = await parse_reference(params.location).and_then_async(
-            lambda ref: self.vim.get_all_vars(ref, params.namespace)
+            lambda ref: self.vim_mux.get_all_vars(ref, params.namespace)
         )
 
         match result:
@@ -61,7 +65,7 @@ class NvimMuxApiImpl(MuxApi):
     async def get_all(self, params: GetAllParams) -> Result[GetAllResult, MuxApiError]:
         return (
             await parse_reference(params.location).and_then_async(
-                lambda ref: self.vim.get_all_vars(ref, params.namespace)
+                lambda ref: self.vim_mux.get_all_vars(ref, params.namespace)
             )
         ).map(GetAllResult)
 
@@ -70,7 +74,7 @@ class NvimMuxApiImpl(MuxApi):
         self, params: ResolveMultipleParams
     ) -> Result[ResolveMultipleResult, MuxApiError]:
         result = await parse_reference(params.location).and_then_async(
-            lambda ref: self.vim.resolve_all_vars(ref, params.namespace)
+            lambda ref: self.vim_mux.resolve_all_vars(ref, params.namespace)
         )
 
         match result:
@@ -92,7 +96,7 @@ class NvimMuxApiImpl(MuxApi):
     async def resolve_all(self, params: ResolveAllParams) -> Result[ResolveAllResult, MuxApiError]:
         return (
             await parse_reference(params.location).and_then_async(
-                lambda ref: self.vim.resolve_all_vars(ref, params.namespace)
+                lambda ref: self.vim_mux.resolve_all_vars(ref, params.namespace)
             )
         ).map(ResolveAllResult)
 
@@ -100,7 +104,7 @@ class NvimMuxApiImpl(MuxApi):
         if self.parent_mux_client is None or self.parent_mux_location is None:
             return
 
-        session_info_result = await self.vim.resolve_all_vars(
+        session_info_result = await self.vim_mux.resolve_all_vars(
             Reference("s:0", 0, Scope.SESSION), "INFO"
         )
         match session_info_result:
@@ -121,7 +125,7 @@ class NvimMuxApiImpl(MuxApi):
         self, params: SetMultipleParams
     ) -> Result[SetMultipleResult, MuxApiError]:
         match await parse_reference(params.location).and_then_async(
-            lambda ref: self.vim.set_multiple_vars(ref, params.namespace, params.values)
+            lambda ref: self.vim_mux.set_multiple_vars(ref, params.namespace, params.values)
         ):
             case Ok():
                 if params.namespace == "INFO":
@@ -135,7 +139,7 @@ class NvimMuxApiImpl(MuxApi):
         self, params: ClearAndReplaceParams
     ) -> Result[ClearAndReplaceResult, MuxApiError]:
         match await parse_reference(params.location).and_then_async(
-            lambda ref: self.vim.clear_and_replace_vars(ref, params.namespace, params.values)
+            lambda ref: self.vim_mux.clear_and_replace_vars(ref, params.namespace, params.values)
         ):
             case Ok():
                 if params.namespace == "INFO":
@@ -149,7 +153,7 @@ class NvimMuxApiImpl(MuxApi):
         self, params: LocationInfoParams
     ) -> Result[LocationInfoResult, MuxApiError]:
         return await parse_reference(params.ref).and_then_async(
-            lambda ref: self.vim.get_location_info(ref)
+            lambda ref: self.vim_mux.get_location_info(ref)
         )
 
     async def publish_to_parent(

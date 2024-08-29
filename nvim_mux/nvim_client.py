@@ -7,14 +7,13 @@ from enum import StrEnum
 from queue import SimpleQueue
 from typing import Any, TypeVar
 
-from jrpc.data import JsonRpcError, JsonTryLoadMixin
-from mux.api import LocationInfoResult
+from jrpc.data import JsonTryLoadMixin
 from mux.errors import MuxApiError
 from result import Err, Ok, Result
 
 from . import nvim_thread
 from .errors import InvalidNvimLocation, NvimLuaApiError, NvimLuaInvalidResponse
-from .nvim_api import NothingResult, VariableValuesResult
+from .nvim_api import ERROR_TYPES_BY_CODE, LocationDne
 from .nvim_thread import NvimWorkItem
 
 _LOGGER = logging.getLogger("nvim-client")
@@ -89,125 +88,41 @@ class NvimClient:
 
     async def call_api(
         self, api_func: str, output_type: type[TOutput], *args: Any
-    ) -> Result[TOutput, MuxApiError]:
+    ) -> Result[TOutput, NvimLuaApiError | NvimLuaInvalidResponse | LocationDne]:
         result = await self.exec_lua(f"return require('mux.api.internal').{api_func}(...)", *args)
 
         match result:
             case Ok(lua_output):
                 pass
             case Err(lua_api_error):
-                return Err(MuxApiError.from_data(lua_api_error))
+                return Err(lua_api_error)
 
         if not isinstance(lua_output, Mapping):
-            return Err(MuxApiError.from_data(NvimLuaInvalidResponse(api_func, repr(lua_output))))
+            return Err(NvimLuaInvalidResponse(api_func, repr(lua_output)))
 
         if "result" in lua_output:
             match output_type.try_load(lua_output["result"]):
                 case Ok(loaded_result):
                     return Ok(loaded_result)
                 case Err():
-                    return Err(
-                        MuxApiError.from_data(NvimLuaInvalidResponse(api_func, repr(lua_output)))
-                    )
+                    return Err(NvimLuaInvalidResponse(api_func, repr(lua_output)))
 
         if "error" in lua_output:
-            match JsonRpcError.try_load(lua_output["error"]):
-                case Ok(json_rpc_error):
-                    return Err(MuxApiError.from_json_rpc_error(json_rpc_error))
+            error = lua_output["error"]
+            if "code" not in error or "data" not in error:
+                return Err(NvimLuaInvalidResponse(api_func, repr(lua_output)))
+
+            code = error["code"]
+            if code not in ERROR_TYPES_BY_CODE:
+                return Err(NvimLuaInvalidResponse(api_func, repr(lua_output)))
+
+            match ERROR_TYPES_BY_CODE[code].try_load(error["data"]):
+                case Ok(typed_error):
+                    return Err(typed_error)
                 case Err():
-                    return Err(
-                        MuxApiError.from_data(NvimLuaInvalidResponse(api_func, repr(lua_output)))
-                    )
+                    return Err(NvimLuaInvalidResponse(api_func, repr(lua_output)))
 
-        return Err(MuxApiError.from_data(NvimLuaInvalidResponse(api_func, repr(lua_output))))
-
-    async def get_all_vars(
-        self, ref: Reference, namespace: str
-    ) -> Result[dict[str, str], MuxApiError]:
-        lua_result = await self.call_api(
-            "get_all_vars",
-            VariableValuesResult,
-            ref.scope.value,
-            ref.target_id,
-            namespace,
-        )
-        match lua_result:
-            case Ok(get_all_result):
-                pass
-            case Err():
-                return lua_result
-
-        if isinstance(get_all_result.values, dict):
-            return Ok(get_all_result.values)
-        return Ok(dict())
-
-    async def resolve_all_vars(
-        self,
-        ref: Reference,
-        namespace: str,
-    ) -> Result[dict[str, str], MuxApiError]:
-        lua_result = await self.call_api(
-            "resolve_all_vars",
-            VariableValuesResult,
-            ref.scope.value,
-            ref.target_id,
-            namespace,
-        )
-        match lua_result:
-            case Ok(resolve_all_result):
-                pass
-            case Err():
-                return lua_result
-
-        if isinstance(resolve_all_result.values, dict):
-            return Ok(resolve_all_result.values)
-        return Ok(dict())
-
-    async def clear_and_replace_vars(
-        self, ref: Reference, namespace: str, values: dict[str, str]
-    ) -> Result[None, MuxApiError]:
-        lua_result = await self.call_api(
-            "clear_and_replace_vars",
-            NothingResult,
-            ref.scope.value,
-            ref.target_id,
-            namespace,
-            values,
-        )
-        match lua_result:
-            case Ok():
-                pass
-            case Err():
-                return lua_result
-
-        return Ok(None)
-
-    async def set_multiple_vars(
-        self,
-        ref: Reference,
-        namespace: str,
-        values: dict[str, str | None],
-    ) -> Result[None, MuxApiError]:
-        lua_result = await self.call_api(
-            "set_multiple_vars",
-            NothingResult,
-            ref.scope.value,
-            ref.target_id,
-            namespace,
-            values,
-        )
-        match lua_result:
-            case Ok():
-                pass
-            case Err():
-                return lua_result
-
-        return Ok(None)
-
-    async def get_location_info(self, ref: Reference) -> Result[LocationInfoResult, MuxApiError]:
-        return await self.call_api(
-            "get_location_info", LocationInfoResult, ref.scope.value, ref.target_id
-        )
+        return Err(NvimLuaInvalidResponse(api_func, repr(lua_output)))
 
 
 async def connect_to_nvim() -> Result[NvimClient, NvimLuaApiError]:

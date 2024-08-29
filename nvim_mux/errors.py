@@ -3,7 +3,8 @@ from enum import Enum
 
 from dataclasses_json import DataClassJsonMixin
 from jrpc.data import ParsedJsonPrimitive
-from mux import errors
+from mux import errors as mux_errors
+from mux.errors import MuxApiError
 
 
 class NvimErrorCode(Enum):
@@ -18,7 +19,7 @@ class InvalidNvimLocation(DataClassJsonMixin):
     raw_value: str
 
 
-errors.register_error_type(
+mux_errors.register_error_type(
     NvimErrorCode.INVALID_NVIM_LOCATION.value,
     "Invalid neovim location reference",
     InvalidNvimLocation,
@@ -31,8 +32,11 @@ class NvimLuaApiError(DataClassJsonMixin):
     args: list[ParsedJsonPrimitive]
     nvim_error_repr: str
 
+    def to_mux_error(self) -> MuxApiError:
+        return MuxApiError.from_data(self)
 
-errors.register_error_type(
+
+mux_errors.register_error_type(
     NvimErrorCode.NVIM_LUA_API_ERROR.value,
     "Neovim lua execution failed",
     NvimLuaApiError,
@@ -44,8 +48,11 @@ class NvimLuaInvalidResponse(DataClassJsonMixin):
     api_func: str
     invalid_response_repr: str
 
+    def to_mux_error(self) -> MuxApiError:
+        return MuxApiError.from_data(self)
 
-errors.register_error_type(
+
+mux_errors.register_error_type(
     NvimErrorCode.NVIM_LUA_INVALID_RESPONSE.value,
     "Neovim lua API call returned an invalid response",
     NvimLuaInvalidResponse,
@@ -57,7 +64,7 @@ class OtherMuxServerError(DataClassJsonMixin):
     detailed_message: str
 
 
-errors.register_error_type(
+mux_errors.register_error_type(
     NvimErrorCode.NVIM_OTHER_MUX_SERVER_ERROR.value,
     "Other mux call failed",
     OtherMuxServerError,
