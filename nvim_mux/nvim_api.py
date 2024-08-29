@@ -1,12 +1,19 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from dataclasses_json import config
 from jrpc.data import JsonTryLoadMixin
+from marshmallow import fields
 from mux.errors import LocationDoesNotExist, MuxApiError, MuxErrorCode
 
 
 @dataclass
 class VariableValues(JsonTryLoadMixin):
-    values: dict[str, str] | tuple[str]
+    values: dict[str, str] | tuple[str] = field(metadata=config(mm_field=fields.Raw()))
+
+
+@dataclass
+class LinkCounts(JsonTryLoadMixin):
+    links: dict[str, dict[str, int]]
 
 
 @dataclass

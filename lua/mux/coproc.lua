@@ -1,23 +1,72 @@
 local M = {}
 
 function M.start_coproc(mux_socket, log_file)
-    M.parent_mux_instance = vim.env.MUX_SOCKET
-    M.parent_mux_location = vim.env.MUX_LOCATION
+    M.socket = mux_socket
+
+    M.parent_mux = {
+        instance = vim.env.MUX_SOCKET,
+        location = vim.env.MUX_LOCATION,
+    }
+
+    M.parent_reg = {
+        instance = vim.env.REG_SOCKET,
+        registry = vim.env.REG_REGISTRY,
+    }
+
     M.log_file = log_file
 
     vim.env.MUX_SOCKET = mux_socket
     vim.env.MUX_LOCATION = nil
     vim.env.MUX_TYPE = "nvim"
 
+    vim.env.REG_SOCKET = mux_socket
+    vim.env.REG_REGISTRY = "0"
+    vim.env.REG_TYPE = "nvim"
+
     local cmd = { "python3", "-m", "nvim_mux.nvim_mux_server", mux_socket, log_file }
-    if M.parent_mux_location then
-        table.insert(cmd, M.parent_mux_instance)
-        table.insert(cmd, M.parent_mux_location)
+
+    if M.parent_mux then
+        table.insert(cmd, M.parent_mux.instance)
+        table.insert(cmd, M.parent_mux.location)
+    else
+        table.insert(cmd, "")
+        table.insert(cmd, "")
+    end
+
+    if M.parent_reg then
+        table.insert(cmd, M.parent_reg.instance)
+        table.insert(cmd, M.parent_reg.registry)
+    else
+        table.insert(cmd, "")
+        table.insert(cmd, "")
     end
 
     M.coproc_handle = vim.system(cmd, {})
 
     return M.coproc_handle
+end
+
+---Sends a JSON RPC notification to the mux server
+---@param method string
+---@param params_json string
+function M.notify(method, params_json)
+    local pipe = vim.uv.new_pipe()
+    pipe:connect(M.socket, function(err)
+        if err then
+            vim.print("Failed to connect to mux server: " .. err)
+            return
+        end
+
+        pipe:write(
+            string.format('{ "jsonrpc": "2.0", "method": "%s", "params": %s }', method, params_json),
+            function(write_error)
+                if write_error then
+                    vim.print("Failed to send notification to mux server: " .. err)
+                end
+                pipe:close()
+            end
+        )
+    end)
 end
 
 return M

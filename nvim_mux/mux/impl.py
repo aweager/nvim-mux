@@ -23,10 +23,8 @@ from mux.service import MuxApi
 from result import Err, Ok, Result
 from typing_extensions import override
 
-from nvim_mux.errors import OtherMuxServerError
-from nvim_mux.ext.api import PublishToParentParams, PublishToParentResult
-from nvim_mux.mux.mux_client import MuxClient
-from nvim_mux.nvim_client import NvimClient, Reference, Scope, parse_reference
+from nvim_mux.mux.mux_client import MuxClient, Reference, Scope, parse_reference
+from nvim_mux.nvim_client import NvimClient
 
 
 @dataclass
@@ -155,28 +153,3 @@ class NvimMuxApiImpl(MuxApi):
         return await parse_reference(params.ref).and_then_async(
             lambda ref: self.vim_mux.get_location_info(ref)
         )
-
-    async def publish_to_parent(
-        self, params: PublishToParentParams
-    ) -> Result[PublishToParentResult, MuxApiError]:
-        if self.parent_mux_client is None or self.parent_mux_location is None:
-            return Ok(PublishToParentResult())
-
-        match (
-            await self.parent_mux_client.request(
-                MuxMethod.CLEAR_AND_REPLACE,
-                ClearAndReplaceParams(
-                    location=self.parent_mux_location,
-                    namespace="INFO",
-                    values=params.values,
-                ),
-            )
-        ):
-            case Ok():
-                return Ok(PublishToParentResult())
-            case Err(e):
-                match e:
-                    case MuxApiError():
-                        return Err(e)
-                    case _:
-                        return Err(MuxApiError.from_data(OtherMuxServerError(repr(e))))

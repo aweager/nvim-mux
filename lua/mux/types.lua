@@ -18,6 +18,26 @@ local M = {}
 ---| "w" # window
 ---| "b" # buffer
 
+-- stylua: ignore start
+---@enum Regname
+M.Regname = {
+    unnamed = "unnamed",
+    a = "a", b = "b", c = "c", d = "d", e = "e", f = "f",
+    g = "g", h = "h", i = "i", j = "j", k = "k", l = "l",
+    m = "m", n = "n", o = "o", p = "p", q = "q", r = "r",
+    s = "s", t = "t", u = "u", v = "v", w = "w", x = "x",
+    y = "y", z = "z",
+}
+local regname_by_vim_name = {
+    [""] = "unnamed",
+    a = "a", b = "b", c = "c", d = "d", e = "e", f = "f",
+    g = "g", h = "h", i = "i", j = "j", k = "k", l = "l",
+    m = "m", n = "n", o = "o", p = "p", q = "q", r = "r",
+    s = "s", t = "t", u = "u", v = "v", w = "w", x = "x",
+    y = "y", z = "z",
+}
+-- stylua: ignore end
+
 ---Gets the buffer corresponding to a process ID
 ---@param pid integer
 ---@return integer | nil
@@ -81,6 +101,24 @@ end
 ---@return string
 function M.make_location_str(scope, id)
     return "" .. scope .. ":" .. id
+end
+
+---Determine the vim name for the register
+---@param regname Regname
+---@return string?
+function M.regname_to_vim_name(regname)
+    if regname == "unnamed" then
+        return ""
+    end
+
+    return regname
+end
+
+---Get the regname from vim's name
+---@param vim_name string
+---@return Regname?
+function M.regname_from_vim_name(vim_name)
+    return regname_by_vim_name[string.lower(vim_name)]
 end
 
 return M

@@ -22,6 +22,8 @@ function M.setup()
     if handle ~= nil then
         local augroup = vim.api.nvim_create_augroup("MuxApi", {})
         local api = require("mux.api")
+        local internal_reg_api = require("mux.api.internal.reg")
+        local types = require("mux.types")
 
         vim.api.nvim_create_autocmd("WinEnter", {
             group = augroup,
@@ -35,6 +37,17 @@ function M.setup()
             group = augroup,
             callback = api.publish,
         })
+
+        vim.api.nvim_create_autocmd("TextYankPost", {
+            group = augroup,
+            callback = function()
+                local regname = types.regname_from_vim_name(vim.v.event.regname)
+                if regname then
+                    internal_reg_api.publish_sync(regname)
+                end
+            end,
+        })
+
         vim.api.nvim_create_autocmd("VimLeave", {
             group = augroup,
             callback = function()

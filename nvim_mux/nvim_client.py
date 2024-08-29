@@ -3,65 +3,18 @@ import logging
 from collections.abc import Mapping
 from concurrent import futures
 from dataclasses import dataclass
-from enum import StrEnum
 from queue import SimpleQueue
 from typing import Any, TypeVar
 
-from jrpc.data import JsonTryLoadMixin
-from mux.errors import MuxApiError
+from jrpc.data import JsonTryLoadMixin, ParsedJson
 from result import Err, Ok, Result
 
 from . import nvim_thread
-from .errors import InvalidNvimLocation, NvimLuaApiError, NvimLuaInvalidResponse
+from .errors import NvimLuaApiError, NvimLuaInvalidResponse
 from .nvim_api import ERROR_TYPES_BY_CODE, LocationDne
 from .nvim_thread import NvimWorkItem
 
 _LOGGER = logging.getLogger("nvim-client")
-
-
-class Scope(StrEnum):
-    PID = "pid"
-    BUFFER = "b"
-    WINDOW = "w"
-    TABPAGE = "t"
-    SESSION = "s"
-
-
-_SCOPE_BY_REF_PREFIX = {
-    "s": Scope.SESSION,
-    "t": Scope.TABPAGE,
-    "w": Scope.WINDOW,
-    "b": Scope.BUFFER,
-    "pid": Scope.PID,
-}
-
-
-@dataclass
-class Reference:
-    raw_value: str
-    target_id: int
-    scope: Scope
-
-
-def parse_reference(raw_value: str) -> Result[Reference, MuxApiError]:
-    colon_ind = raw_value.find(":")
-    if colon_ind < 0:
-        return Err(MuxApiError.from_data(InvalidNvimLocation(raw_value)))
-
-    prefix = raw_value[:colon_ind]
-    suffix = raw_value[colon_ind + 1 :]
-    if prefix not in _SCOPE_BY_REF_PREFIX:
-        return Err(MuxApiError.from_data(InvalidNvimLocation(raw_value)))
-
-    target_id: int
-    try:
-        target_id = int(suffix)
-    except ValueError:
-        return Err(MuxApiError.from_data(InvalidNvimLocation(raw_value)))
-
-    return Ok(
-        Reference(raw_value=raw_value, target_id=target_id, scope=_SCOPE_BY_REF_PREFIX[prefix])
-    )
 
 
 TOutput = TypeVar("TOutput", bound=JsonTryLoadMixin)
@@ -72,7 +25,7 @@ class NvimClient:
     vim_queue: SimpleQueue[NvimWorkItem]
     logging_level: int
 
-    async def exec_lua(self, lua: str, *args: Any) -> Result[Any, NvimLuaApiError]:
+    async def exec_lua(self, lua: str, *args: ParsedJson) -> Result[Any, NvimLuaApiError]:
         _LOGGER.debug(f"Queuing up lua with args: {lua} {args}")
 
         future: futures.Future[Result[Any, Exception]] = futures.Future()
@@ -87,7 +40,7 @@ class NvimClient:
                 return Err(NvimLuaApiError(lua, list(args), repr(nvim_error)))
 
     async def call_api(
-        self, api_func: str, output_type: type[TOutput], *args: Any
+        self, api_func: str, output_type: type[TOutput], *args: ParsedJson
     ) -> Result[TOutput, NvimLuaApiError | NvimLuaInvalidResponse | LocationDne]:
         result = await self.exec_lua(f"return require('mux.api.internal').{api_func}(...)", *args)
 
@@ -123,6 +76,17 @@ class NvimClient:
                     return Err(NvimLuaInvalidResponse(api_func, repr(lua_output)))
 
         return Err(NvimLuaInvalidResponse(api_func, repr(lua_output)))
+
+    async def call_no_error(
+        self, api_func: str, output_type: type[TOutput], *args: ParsedJson
+    ) -> Result[TOutput, NvimLuaApiError | NvimLuaInvalidResponse]:
+        match await self.call_api(api_func, output_type, *args):
+            case Ok(value):
+                return Ok(value)
+            case Err(e):
+                if isinstance(e, LocationDne):
+                    return Err(NvimLuaInvalidResponse(api_func, repr(e)))
+                return Err(e)
 
 
 async def connect_to_nvim() -> Result[NvimClient, NvimLuaApiError]:
