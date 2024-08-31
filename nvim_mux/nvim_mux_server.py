@@ -2,8 +2,11 @@
 
 import asyncio
 import logging
+import os
 import pathlib
+import signal
 from asyncio import Server
+from functools import partial
 from sys import argv, stderr
 
 import jrpc
@@ -83,6 +86,17 @@ async def start_mux_server(
     return Ok(await asyncio.start_unix_server(connection_callback, path=socket_path))
 
 
+_TERMINATING_SIGNALS = [
+    signal.SIGTERM,
+    signal.SIGINT,
+    signal.SIGQUIT,
+]
+
+
+def _handle_terminating_signals(server: Server):
+    server.close()
+
+
 async def main(
     socket_path: pathlib.Path,
     log_file: pathlib.Path,
@@ -101,8 +115,18 @@ async def main(
         parent_reg_registry=parent_reg_registry or None,
     ):
         case Ok(server):
+            for signal in _TERMINATING_SIGNALS:
+                asyncio.get_running_loop().add_signal_handler(
+                    signal, partial(_handle_terminating_signals, server=server)
+                )
             _LOGGER.info("Server started")
-            await server.serve_forever()
+            async with server:
+                try:
+                    await server.serve_forever()
+                finally:
+                    _LOGGER.info("Server shutting down")
+                    os.unlink(socket_path)
+            await server.wait_closed()
             return 0
         case Err(lua_error):
             stderr.write(

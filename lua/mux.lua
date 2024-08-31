@@ -2,7 +2,7 @@ local M = {}
 
 local function prep_files()
     local pid = vim.fn.getpid()
-    M.rundir = vim.fn.stdpath("run") .. "/nvim/mux"
+    M.rundir = vim.fn.stdpath("run") .. "/mux"
     M.logdir = vim.fn.stdpath("log") .. "/mux"
 
     -- TODO use uv
