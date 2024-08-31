@@ -5,7 +5,7 @@ import logging
 import os
 import pathlib
 import signal
-from asyncio import Server
+from asyncio import FIRST_COMPLETED, Server
 from functools import partial
 from sys import argv, stderr
 
@@ -90,11 +90,13 @@ _TERMINATING_SIGNALS = [
     signal.SIGTERM,
     signal.SIGINT,
     signal.SIGQUIT,
+    signal.SIGHUP,
 ]
 
 
-def _handle_terminating_signals(server: Server):
-    server.close()
+def _handle_terminating_signals(signal: int, future: asyncio.Future[int]):
+    _LOGGER.info(f"Received {signal}, closing the server")
+    future.set_result(signal)
 
 
 async def main(
@@ -115,18 +117,24 @@ async def main(
         parent_reg_registry=parent_reg_registry or None,
     ):
         case Ok(server):
-            for signal in _TERMINATING_SIGNALS:
+            term_future: asyncio.Future[int] = asyncio.Future()
+            for term_signal in _TERMINATING_SIGNALS:
                 asyncio.get_running_loop().add_signal_handler(
-                    signal, partial(_handle_terminating_signals, server=server)
+                    term_signal,
+                    partial(_handle_terminating_signals, signal=term_signal, future=term_future),
                 )
             _LOGGER.info("Server started")
-            async with server:
-                try:
-                    await server.serve_forever()
-                finally:
-                    _LOGGER.info("Server shutting down")
-                    os.unlink(socket_path)
-            await server.wait_closed()
+            try:
+                await asyncio.wait(
+                    [
+                        asyncio.create_task(server.serve_forever()),
+                        term_future,
+                    ],
+                    return_when=FIRST_COMPLETED,
+                )
+            finally:
+                _LOGGER.info("Server shutting down")
+                os.unlink(socket_path)
             return 0
         case Err(lua_error):
             stderr.write(
