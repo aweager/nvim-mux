@@ -92,7 +92,7 @@ async def main(
     parent_reg_instance: str,
     parent_reg_registry: str,
 ) -> int:
-    logging.basicConfig(filename=log_file, level=logging.DEBUG)
+    logging.basicConfig(filename=log_file, level=logging.INFO)
 
     match await start_mux_server(
         socket_path=socket_path,

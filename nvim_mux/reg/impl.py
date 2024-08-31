@@ -24,7 +24,7 @@ from reg.api import (
     SyncMultipleResult,
     parse_regname,
 )
-from reg.errors import RegApiError
+from reg.errors import RegApiError, RejectedUnlinkedSync
 from reg.service import RegApi
 from reg.syncer import RegSyncer
 from result import Err, Ok, Result
@@ -164,14 +164,17 @@ class NvimRegApiImpl(RegApi):
     async def sync_multiple(
         self, params: SyncMultipleParams
     ) -> Result[SyncMultipleResult, RegApiError]:
-        match await self.registers.set_multiple_registers(params.values):
-            case Ok():
+        match await self.registers.list_links():
+            case Ok(links):
                 pass
             case Err(e):
                 return Err(e.to_reg_error())
 
-        match await self.registers.list_links():
-            case Ok(links):
+        if params.source_link not in links:
+            return Err(RegApiError.from_data(RejectedUnlinkedSync()))
+
+        match await self.registers.set_multiple_registers(params.values):
+            case Ok():
                 pass
             case Err(e):
                 return Err(e.to_reg_error())
@@ -187,14 +190,17 @@ class NvimRegApiImpl(RegApi):
 
     @override
     async def sync_all(self, params: SyncAllParams) -> Result[SyncAllResult, RegApiError]:
-        match await self.registers.clear_and_replace_registers(params.values):
-            case Ok():
+        match await self.registers.list_links():
+            case Ok(links):
                 pass
             case Err(e):
                 return Err(e.to_reg_error())
 
-        match await self.registers.list_links():
-            case Ok(links):
+        if params.source_link not in links:
+            return Err(RegApiError.from_data(RejectedUnlinkedSync()))
+
+        match await self.registers.clear_and_replace_registers(params.values):
+            case Ok():
                 pass
             case Err(e):
                 return Err(e.to_reg_error())

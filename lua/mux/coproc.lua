@@ -3,15 +3,18 @@ local M = {}
 function M.start_coproc(mux_socket, log_file)
     M.socket = mux_socket
 
-    M.parent_mux = {
-        instance = vim.env.MUX_SOCKET,
-        location = vim.env.MUX_LOCATION,
-    }
-
-    M.parent_reg = {
-        instance = vim.env.REG_SOCKET,
-        registry = vim.env.REG_REGISTRY,
-    }
+    if vim.env.MUX_SOCKET and vim.env.MUX_LOCATION then
+        M.parent_mux = {
+            instance = vim.env.MUX_SOCKET,
+            location = vim.env.MUX_LOCATION,
+        }
+    end
+    if vim.env.REG_SOCKET and vim.env.REG_REGISTRY then
+        M.parent_reg = {
+            instance = vim.env.REG_SOCKET,
+            registry = vim.env.REG_REGISTRY,
+        }
+    end
 
     M.log_file = log_file
 
