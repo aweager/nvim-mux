@@ -8,7 +8,6 @@ from sys import argv, stderr
 
 import jrpc
 from jrpc.client import JsonRpcClient, JsonRpcOneoffClient, unix_factory
-from mux.api import MuxMethod
 from mux.rpc_processor import mux_rpc_processor
 from reg.api import AddLinkParams, RegLink, RegMethod
 from reg.rpc_processor import reg_rpc_processor
