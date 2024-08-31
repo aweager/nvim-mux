@@ -134,6 +134,7 @@ async def main(
                 )
             finally:
                 _LOGGER.info("Server shutting down")
+                server.close()
                 os.unlink(socket_path)
             return 0
         case Err(lua_error):
