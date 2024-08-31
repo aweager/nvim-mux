@@ -102,7 +102,7 @@ async def main(
     ):
         case Ok(server):
             _LOGGER.info("Server started")
-            await server.wait_closed()
+            await server.serve_forever()
             return 0
         case Err(lua_error):
             stderr.write(

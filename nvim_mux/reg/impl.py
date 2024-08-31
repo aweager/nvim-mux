@@ -182,7 +182,7 @@ class NvimRegApiImpl(RegApi):
         return Ok(
             await self.syncer.forward_sync_multiple(
                 registry=params.registry,
-                visited_registries=[],
+                visited_registries=params.visited_registries,
                 links=links,
                 values=params.values,
             )
@@ -208,7 +208,7 @@ class NvimRegApiImpl(RegApi):
         return Ok(
             await self.syncer.forward_sync_all(
                 registry=params.registry,
-                visited_registries=[],
+                visited_registries=params.visited_registries,
                 links=links,
                 values=params.values,
             )
