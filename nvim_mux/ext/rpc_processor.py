@@ -2,7 +2,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
-from jrpc.client import ClientFactory, JsonRpcClient, JsonRpcOneoffClient
+from jrpc.client_cache import ClientManager
 from jrpc.service import JsonRpcProcessor, MethodSet, TypedMethodHandler
 from mux.api import ClearAndReplaceParams, MuxMethod
 from mux.errors import MuxApiError
@@ -12,6 +12,7 @@ from reg.syncer import RegSyncer
 from result import Err, Ok, Result
 
 from nvim_mux.errors import OtherMuxServerError
+from nvim_mux.mux.mux_client import MuxClient, Reference, Scope
 from nvim_mux.nvim_client import NvimClient
 from nvim_mux.reg.reg_client import RegClient
 
@@ -32,40 +33,57 @@ _LOGGER = logging.getLogger("ext-impl")
 class NvimExtensionApiImpl:
     vim: NvimClient
     this_instance: str
-    parent_mux_client: JsonRpcClient | None
+    parent_mux_instance: str | None
     parent_mux_location: str | None
     parent_reg_instance: str | None
     parent_reg_registry: str | None
-    client_factory: ClientFactory
+    mux_clients: ClientManager
+    reg_clients: ClientManager
 
     def __post_init__(self) -> None:
+        self.vars = MuxClient(self.vim)
         self.registers = RegClient(self.vim)
-        self.reg_syncer = RegSyncer(self.client_factory, self.this_instance)
+        self.reg_syncer = RegSyncer(self.reg_clients, self.this_instance)
 
     async def publish_to_parent(
-        self, params: PublishToParentParams
+        self, _: PublishToParentParams
     ) -> Result[PublishToParentResult, MuxApiError]:
-        if self.parent_mux_client is None or self.parent_mux_location is None:
+        if self.parent_mux_instance is None or self.parent_mux_location is None:
             return Ok(PublishToParentResult())
 
-        match (
-            await self.parent_mux_client.request(
-                MuxMethod.CLEAR_AND_REPLACE,
-                ClearAndReplaceParams(
-                    location=self.parent_mux_location,
-                    namespace="INFO",
-                    values=params.values,
-                ),
-            )
-        ):
-            case Ok():
-                return Ok(PublishToParentResult())
-            case Err(e):
-                match e:
-                    case MuxApiError():
-                        return Err(e)
-                    case _:
-                        return Err(MuxApiError.from_data(OtherMuxServerError(repr(e))))
+        ref = Reference(
+            scope=Scope.SESSION,
+            target_id=0,
+            raw_value="s:0",
+        )
+
+        match await self.vars.resolve_all_vars(ref, "INFO"):
+            case Ok(values):
+                pass
+            case Err() as err:
+                return err
+
+        _LOGGER.info(f"Syncing {values} to parent mux")
+
+        async with self.mux_clients.client(self.parent_mux_instance) as client:
+            match (
+                await client.request(
+                    MuxMethod.CLEAR_AND_REPLACE,
+                    ClearAndReplaceParams(
+                        location=self.parent_mux_location,
+                        namespace="INFO",
+                        values=values,
+                    ),
+                )
+            ):
+                case Ok():
+                    return Ok(PublishToParentResult())
+                case Err(e):
+                    match e:
+                        case MuxApiError():
+                            return Err(e)
+                        case _:
+                            return Err(MuxApiError.from_data(OtherMuxServerError(repr(e))))
 
     async def sync_registers_down(
         self, _: SyncRegistersDownParams
@@ -75,15 +93,16 @@ class NvimExtensionApiImpl:
 
         _LOGGER.info(f"Syncing down from {self.parent_reg_instance} : {self.parent_reg_registry}")
 
-        match await JsonRpcOneoffClient(self.parent_reg_instance, self.client_factory).request(
-            descriptor=RegMethod.GET_ALL,
-            params=GetAllParams(self.parent_reg_registry),
-        ):
-            case Ok(GetAllResult(values)):
-                pass
-            case Err(e):
-                _LOGGER.error(f"Failed to get parent registers: {e}")
-                return Ok(SyncRegistersDownResult())
+        async with self.reg_clients.client(self.parent_reg_instance) as client:
+            match await client.request(
+                descriptor=RegMethod.GET_ALL,
+                params=GetAllParams(self.parent_reg_registry),
+            ):
+                case Ok(GetAllResult(values)):
+                    pass
+                case Err(e):
+                    _LOGGER.error(f"Failed to get parent registers: {e}")
+                    return Ok(SyncRegistersDownResult())
 
         match await self.registers.clear_and_replace_registers(values):
             case Ok():

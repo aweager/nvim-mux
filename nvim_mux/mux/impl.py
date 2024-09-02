@@ -1,6 +1,7 @@
+import logging
 from dataclasses import dataclass
 
-from jrpc.client import JsonRpcClient
+from jrpc.client_cache import ClientManager
 from mux.api import (
     ClearAndReplaceParams,
     ClearAndReplaceResult,
@@ -26,10 +27,13 @@ from typing_extensions import override
 from nvim_mux.mux.mux_client import MuxClient, Reference, Scope, parse_reference
 from nvim_mux.nvim_client import NvimClient
 
+_LOGGER = logging.getLogger("nvim-mux-impl")
+
 
 @dataclass
 class NvimMuxApiImpl(MuxApi):
-    parent_mux_client: JsonRpcClient | None
+    clients: ClientManager
+    parent_mux_instance: str | None
     parent_mux_location: str | None
     vim: NvimClient
 
@@ -98,25 +102,28 @@ class NvimMuxApiImpl(MuxApi):
             )
         ).map(ResolveAllResult)
 
-    async def _publish(self) -> None:
-        if self.parent_mux_client is None or self.parent_mux_location is None:
+    async def publish(self) -> None:
+        if self.parent_mux_instance is None or self.parent_mux_location is None:
             return
 
-        session_info_result = await self.vim_mux.resolve_all_vars(
-            Reference("s:0", 0, Scope.SESSION), "INFO"
-        )
-        match session_info_result:
-            case Ok(session_info):
-                pass
-            case Err():
-                return
+        async with self.clients.client(self.parent_mux_instance) as client:
+            session_info_result = await self.vim_mux.resolve_all_vars(
+                Reference("s:0", 0, Scope.SESSION), "INFO"
+            )
+            match session_info_result:
+                case Ok(session_info):
+                    pass
+                case Err():
+                    return
 
-        await self.parent_mux_client.request(
-            MuxMethod.CLEAR_AND_REPLACE,
-            ClearAndReplaceParams(
-                location=self.parent_mux_location, namespace="INFO", values=session_info
-            ),
-        )
+            match await client.request(
+                MuxMethod.CLEAR_AND_REPLACE,
+                ClearAndReplaceParams(
+                    location=self.parent_mux_location, namespace="INFO", values=session_info
+                ),
+            ):
+                case Err(e):
+                    _LOGGER.warning(f"Failed to publish to parent mux: {e}")
 
     @override
     async def set_multiple(
@@ -127,7 +134,7 @@ class NvimMuxApiImpl(MuxApi):
         ):
             case Ok():
                 if params.namespace == "INFO":
-                    await self._publish()
+                    await self.publish()
                 return Ok(SetMultipleResult())
             case Err() as err:
                 return err
@@ -141,7 +148,7 @@ class NvimMuxApiImpl(MuxApi):
         ):
             case Ok():
                 if params.namespace == "INFO":
-                    await self._publish()
+                    await self.publish()
                 return Ok(ClearAndReplaceResult())
             case Err() as err:
                 return err

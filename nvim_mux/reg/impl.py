@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 
-from jrpc.client import ClientFactory
+from jrpc.client_cache import ClientManager
 from reg.api import (
     AddLinkParams,
     AddLinkResult,
@@ -52,12 +52,12 @@ def regname_key_coerce(values: dict[str, TValue]) -> dict[Regname, TValue]:
 @dataclass
 class NvimRegApiImpl(RegApi):
     vim: NvimClient
-    client_factory: ClientFactory
+    clients: ClientManager
     this_instance: str
 
     def __post_init__(self) -> None:
         self.registers = RegClient(self.vim)
-        self.syncer = RegSyncer(self.client_factory, self.this_instance)
+        self.syncer = RegSyncer(self.clients, self.this_instance)
 
     @override
     async def get_registry_info(

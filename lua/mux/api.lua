@@ -115,22 +115,8 @@ end
 
 ---Publishes session-level values to the parent mux, if it exists
 function M.publish()
-    -- TODO use API method?
-    if coproc.parent_mux_location ~= nil then
-        local command = {
-            "mux",
-            "-I",
-            coproc.parent_mux_instance,
-            "set-info",
-            coproc.parent_mux_location,
-        }
-
-        for key, val in pairs(assert(M.resolve_info("s:0"))) do
-            table.insert(command, key)
-            table.insert(command, val)
-        end
-
-        vim.system(command):wait()
+    if coproc.parent_mux ~= nil then
+        coproc.notify("nvim.publish-to-parent", "{}")
     end
 end
 
