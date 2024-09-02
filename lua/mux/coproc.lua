@@ -3,30 +3,39 @@ local M = {}
 function M.start_coproc(mux_socket, log_file)
     M.socket = mux_socket
 
-    if vim.env.MUX_SOCKET and vim.env.MUX_LOCATION then
+    if vim.env.MUX_INSTANCE and vim.env.MUX_LOCATION then
         M.parent_mux = {
-            instance = vim.env.MUX_SOCKET,
+            instance = vim.env.MUX_INSTANCE,
             location = vim.env.MUX_LOCATION,
         }
     end
-    if vim.env.REG_SOCKET and vim.env.REG_REGISTRY then
+    if vim.env.REG_INSTANCE and vim.env.REG_REGISTRY then
         M.parent_reg = {
-            instance = vim.env.REG_SOCKET,
+            instance = vim.env.REG_INSTANCE,
             registry = vim.env.REG_REGISTRY,
         }
     end
 
     M.log_file = log_file
 
-    vim.env.MUX_SOCKET = mux_socket
+    local nvim_pid = vim.fn.getpid()
+    vim.env.MUX_INSTANCE = string.format("mux@nvim.%s", nvim_pid)
     vim.env.MUX_LOCATION = nil
     vim.env.MUX_TYPE = "nvim"
 
-    vim.env.REG_SOCKET = mux_socket
+    vim.env.REG_INSTANCE = string.format("reg@nvim.%s", nvim_pid)
     vim.env.REG_REGISTRY = "0"
     vim.env.REG_TYPE = "nvim"
 
-    local cmd = { "python3", "-m", "nvim_mux.nvim_mux_server", mux_socket, log_file }
+    local cmd = {
+        "python3",
+        "-m",
+        "nvim_mux.nvim_mux_server",
+        mux_socket,
+        string.format("%s", nvim_pid),
+        vim.env.JRPC_ROUTER_SOCKET or "",
+        log_file,
+    }
 
     if M.parent_mux then
         table.insert(cmd, M.parent_mux.instance)

@@ -24,6 +24,7 @@ from mux.service import MuxApi
 from result import Err, Ok, Result
 from typing_extensions import override
 
+from nvim_mux.data import ParentMux
 from nvim_mux.mux.mux_client import MuxClient, Reference, Scope, parse_reference
 from nvim_mux.nvim_client import NvimClient
 
@@ -33,8 +34,7 @@ _LOGGER = logging.getLogger("nvim-mux-impl")
 @dataclass
 class NvimMuxApiImpl(MuxApi):
     clients: ClientManager
-    parent_mux_instance: str | None
-    parent_mux_location: str | None
+    parent_mux: ParentMux | None
     vim: NvimClient
 
     def __post_init__(self) -> None:
@@ -103,10 +103,10 @@ class NvimMuxApiImpl(MuxApi):
         ).map(ResolveAllResult)
 
     async def publish(self) -> None:
-        if self.parent_mux_instance is None or self.parent_mux_location is None:
+        if self.parent_mux is None:
             return
 
-        async with self.clients.client(self.parent_mux_instance) as client:
+        async with self.clients.client(self.parent_mux.instance) as client:
             session_info_result = await self.vim_mux.resolve_all_vars(
                 Reference("s:0", 0, Scope.SESSION), "INFO"
             )
@@ -119,7 +119,7 @@ class NvimMuxApiImpl(MuxApi):
             match await client.request(
                 MuxMethod.CLEAR_AND_REPLACE,
                 ClearAndReplaceParams(
-                    location=self.parent_mux_location, namespace="INFO", values=session_info
+                    location=self.parent_mux.location, namespace="INFO", values=session_info
                 ),
             ):
                 case Err(e):

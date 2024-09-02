@@ -3,7 +3,7 @@ import logging
 from dataclasses import dataclass
 
 from jrpc.client_cache import ClientManager
-from jrpc.service import JsonRpcProcessor, MethodSet, TypedMethodHandler
+from jrpc.service import JsonRpcProcessor, MethodSet, implements, make_method_set
 from mux.api import ClearAndReplaceParams, MuxMethod
 from mux.errors import MuxApiError
 from reg.api import GetAllParams, GetAllResult, RegMethod
@@ -11,6 +11,7 @@ from reg.errors import RegApiError
 from reg.syncer import RegSyncer
 from result import Err, Ok, Result
 
+from nvim_mux.data import ParentInfo
 from nvim_mux.errors import OtherMuxServerError
 from nvim_mux.mux.mux_client import MuxClient, Reference, Scope
 from nvim_mux.nvim_client import NvimClient
@@ -32,24 +33,23 @@ _LOGGER = logging.getLogger("ext-impl")
 @dataclass
 class NvimExtensionApiImpl:
     vim: NvimClient
-    this_instance: str
-    parent_mux_instance: str | None
-    parent_mux_location: str | None
-    parent_reg_instance: str | None
-    parent_reg_registry: str | None
+    this_reg_instance: str
+    parent_info: ParentInfo
     mux_clients: ClientManager
     reg_clients: ClientManager
 
     def __post_init__(self) -> None:
         self.vars = MuxClient(self.vim)
         self.registers = RegClient(self.vim)
-        self.reg_syncer = RegSyncer(self.reg_clients, self.this_instance)
+        self.reg_syncer = RegSyncer(self.reg_clients, self.this_reg_instance)
 
+    @implements(NvimExtensionMethod.PUBLISH_TO_PARENT)
     async def publish_to_parent(
         self, _: PublishToParentParams
     ) -> Result[PublishToParentResult, MuxApiError]:
-        if self.parent_mux_instance is None or self.parent_mux_location is None:
+        if self.parent_info.parent_mux is None:
             return Ok(PublishToParentResult())
+        parent_mux = self.parent_info.parent_mux
 
         ref = Reference(
             scope=Scope.SESSION,
@@ -63,14 +63,14 @@ class NvimExtensionApiImpl:
             case Err() as err:
                 return err
 
-        _LOGGER.info(f"Syncing {values} to parent mux")
+        _LOGGER.info(f"Syncing {values} to parent mux {parent_mux}")
 
-        async with self.mux_clients.client(self.parent_mux_instance) as client:
+        async with self.mux_clients.client(parent_mux.instance) as client:
             match (
                 await client.request(
                     MuxMethod.CLEAR_AND_REPLACE,
                     ClearAndReplaceParams(
-                        location=self.parent_mux_location,
+                        location=parent_mux.location,
                         namespace="INFO",
                         values=values,
                     ),
@@ -85,18 +85,20 @@ class NvimExtensionApiImpl:
                         case _:
                             return Err(MuxApiError.from_data(OtherMuxServerError(repr(e))))
 
+    @implements(NvimExtensionMethod.SYNC_REGISTERS_DOWN)
     async def sync_registers_down(
         self, _: SyncRegistersDownParams
     ) -> Result[SyncRegistersDownResult, RegApiError]:
-        if not self.parent_reg_instance or not self.parent_reg_registry:
+        if not self.parent_info.parent_reg:
             return Ok(SyncRegistersDownResult())
+        parent_reg = self.parent_info.parent_reg
 
-        _LOGGER.info(f"Syncing down from {self.parent_reg_instance} : {self.parent_reg_registry}")
+        _LOGGER.info(f"Syncing down from parent reg {parent_reg}")
 
-        async with self.reg_clients.client(self.parent_reg_instance) as client:
+        async with self.reg_clients.client(parent_reg.instance) as client:
             match await client.request(
                 descriptor=RegMethod.GET_ALL,
-                params=GetAllParams(self.parent_reg_registry),
+                params=GetAllParams(parent_reg.registry),
             ):
                 case Ok(GetAllResult(values)):
                     pass
@@ -111,6 +113,7 @@ class NvimExtensionApiImpl:
                 _LOGGER.error(f"Failed to write parent's registers: {e}")
                 return Err(e.to_reg_error())
 
+    @implements(NvimExtensionMethod.PUBLISH_REGISTERS)
     async def publish_registers(
         self, params: PublishRegistersParams
     ) -> Result[PublishRegistersResult, RegApiError]:
@@ -138,11 +141,5 @@ class NvimExtensionApiImpl:
 
         return Ok(PublishRegistersResult())
 
-
-def ext_rpc_processor(ext_impl: NvimExtensionApiImpl) -> JsonRpcProcessor:
-    handlers: list[TypedMethodHandler] = [
-        TypedMethodHandler(NvimExtensionMethod.PUBLISH_TO_PARENT, ext_impl.publish_to_parent),
-        TypedMethodHandler(NvimExtensionMethod.SYNC_REGISTERS_DOWN, ext_impl.sync_registers_down),
-        TypedMethodHandler(NvimExtensionMethod.PUBLISH_REGISTERS, ext_impl.publish_registers),
-    ]
-    return MethodSet({m.descriptor.name: m for m in handlers})
+    def method_set(self) -> MethodSet:
+        return make_method_set(NvimExtensionApiImpl, self)
