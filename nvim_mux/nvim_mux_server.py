@@ -173,7 +173,7 @@ async def main(
     parent_reg_instance: str,
     parent_reg_registry: str,
 ) -> int:
-    logging.basicConfig(filename=log_file, level=logging.INFO)
+    logging.basicConfig(filename=log_file, level=logging.WARNING)
 
     term_future: asyncio.Future[int] = asyncio.Future()
     for term_signal in _TERMINATING_SIGNALS:
