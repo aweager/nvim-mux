@@ -13,9 +13,7 @@ from sys import argv, stderr
 import jrpc
 from jrpc.client_cache import ClientManager
 from jrpc_router.client_factory import connect_to_router
-from mux.rpc_processor import mux_rpc_processor
 from reg.api import AddLinkParams, RegLink, RegMethod, RemoveLinkParams
-from reg.rpc_processor import reg_rpc_processor
 from result import Err, Ok, Result
 
 from .data import ParentInfo, ParentMux, ParentReg
