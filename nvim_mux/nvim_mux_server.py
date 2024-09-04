@@ -65,14 +65,12 @@ async def link_to_reg_parent(
 
 async def run_mux_server(
     socket_path: pathlib.Path,
-    nvim_pid: int,
+    mux_service_name: str,
+    reg_service_name: str,
     term_future: asyncio.Future[int],
-    router_socket: str | None,
+    router_socket: str,
     parent_info: ParentInfo,
 ) -> Result[int, NvimLuaApiError]:
-    this_mux_instance = f"mux@nvim.{nvim_pid}"
-    this_reg_instance = f"reg@nvim.{nvim_pid}"
-
     match await connect_to_nvim():
         case Ok(vim):
             pass
@@ -100,12 +98,12 @@ async def run_mux_server(
     )
     reg_impl = NvimRegApiImpl(
         vim=vim,
-        this_instance=this_reg_instance,
+        this_instance=reg_service_name,
         clients=reg_clients,
     )
     ext_impl = NvimExtensionApiImpl(
         vim=vim,
-        this_reg_instance=this_reg_instance,
+        this_reg_instance=reg_service_name,
         mux_clients=mux_clients,
         reg_clients=reg_clients,
         parent_info=parent_info,
@@ -123,9 +121,9 @@ async def run_mux_server(
             router,
             mux_clients,
             reg_clients,
-            router.active_service(this_mux_instance, str(socket_path)),
-            router.active_service(this_reg_instance, str(socket_path)),
-            link_to_reg_parent(this_reg_instance, reg_clients, parent_info.parent_reg),
+            router.active_service(mux_service_name, str(socket_path)),
+            router.active_service(reg_service_name, str(socket_path)),
+            link_to_reg_parent(reg_service_name, reg_clients, parent_info.parent_reg),
         ):
             # TODO less hacky way of initial publish / sync
             async with asyncio.TaskGroup() as tg:
@@ -165,9 +163,10 @@ def _handle_terminating_signals(signal: int, future: asyncio.Future[int]):
 
 async def main(
     socket_path: pathlib.Path,
-    nvim_pid: int,
-    router_socket: str,
+    mux_service_name: str,
+    reg_service_name: str,
     log_file: pathlib.Path,
+    router_socket: str,
     parent_mux_instance: str,
     parent_mux_location: str,
     parent_reg_instance: str,
@@ -195,9 +194,10 @@ async def main(
 
     match await run_mux_server(
         socket_path=socket_path,
-        nvim_pid=nvim_pid,
+        mux_service_name=mux_service_name,
+        reg_service_name=reg_service_name,
         term_future=term_future,
-        router_socket=router_socket or None,
+        router_socket=router_socket,
         parent_info=ParentInfo(parent_mux, parent_reg),
     ):
         case Ok(term_value):
@@ -214,9 +214,10 @@ if __name__ == "__main__":
     (
         _,
         socket,
-        nvim_pid,
-        router_socket,
+        mux_service_name,
+        reg_service_name,
         log_file,
+        router_socket,
         parent_mux_instance,
         parent_mux_location,
         parent_reg_instance,
@@ -227,9 +228,10 @@ if __name__ == "__main__":
         asyncio.run(
             main(
                 socket_path=pathlib.Path(socket),
-                nvim_pid=int(nvim_pid),
-                router_socket=router_socket,
+                mux_service_name=mux_service_name,
+                reg_service_name=reg_service_name,
                 log_file=pathlib.Path(log_file),
+                router_socket=router_socket,
                 parent_mux_instance=parent_mux_instance,
                 parent_mux_location=parent_mux_location,
                 parent_reg_instance=parent_reg_instance,

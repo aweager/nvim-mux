@@ -19,11 +19,12 @@ function M.start_coproc(mux_socket, log_file)
     M.log_file = log_file
 
     local nvim_pid = vim.fn.getpid()
-    vim.env.MUX_INSTANCE = string.format("mux@nvim.%s", nvim_pid)
+    local host = vim.fn.hostname()
+    vim.env.MUX_INSTANCE = string.format("mux@nvim.%s@%s", nvim_pid, host)
     vim.env.MUX_LOCATION = nil
     vim.env.MUX_TYPE = "nvim"
 
-    vim.env.REG_INSTANCE = string.format("reg@nvim.%s", nvim_pid)
+    vim.env.REG_INSTANCE = string.format("reg@nvim.%s@%s", nvim_pid, host)
     vim.env.REG_REGISTRY = "0"
     vim.env.REG_TYPE = "nvim"
 
@@ -32,9 +33,10 @@ function M.start_coproc(mux_socket, log_file)
         "-m",
         "nvim_mux.nvim_mux_server",
         mux_socket,
-        string.format("%s", nvim_pid),
-        vim.env.JRPC_ROUTER_SOCKET or "",
+        vim.env.MUX_INSTANCE,
+        vim.env.REG_INSTANCE,
         log_file,
+        vim.env.JRPC_ROUTER_SOCKET or "",
     }
 
     if M.parent_mux then
