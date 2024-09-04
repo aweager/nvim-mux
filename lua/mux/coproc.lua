@@ -60,10 +60,9 @@ function M.start_coproc(mux_socket, log_file)
     return M.coproc_handle
 end
 
----Sends a JSON RPC notification to the mux server
----@param method string
----@param params_json string
-function M.notify(method, params_json)
+---Sends JSON RPC notifications to the mux server
+---@param notifications { method: string, params_json: string }[]
+function M.notify(notifications)
     local pipe = vim.uv.new_pipe()
     pipe:connect(M.socket, function(err)
         if err then
@@ -71,15 +70,22 @@ function M.notify(method, params_json)
             return
         end
 
-        pipe:write(
-            string.format('{ "jsonrpc": "2.0", "method": "%s", "params": %s }', method, params_json),
-            function(write_error)
-                if write_error then
-                    vim.print("Failed to send notification to mux server: " .. err)
-                end
-                pipe:close()
+        local text = ""
+        for _, notification in pairs(notifications) do
+            text = text
+                .. string.format(
+                    '{ "jsonrpc": "2.0", "method": "%s", "params": %s }\n',
+                    notification.method,
+                    notification.params_json
+                )
+        end
+
+        pipe:write(text, function(write_error)
+            if write_error then
+                vim.print("Failed to send notifications to mux server: " .. err)
             end
-        )
+            pipe:close()
+        end)
     end)
 end
 

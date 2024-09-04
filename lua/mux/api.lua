@@ -3,6 +3,7 @@ local M = {}
 local coproc = require("mux.coproc")
 local types = require("mux.types")
 local api_internal = require("mux.api.internal")
+local notify_api = require("mux.api.internal.notify")
 
 ---Gets the values at the specified locations for a namespace
 ---@param location string
@@ -116,7 +117,7 @@ end
 ---Publishes session-level values to the parent mux, if it exists
 function M.publish()
     if coproc.parent_mux ~= nil then
-        coproc.notify("nvim.publish-to-parent", "{}")
+        notify_api.queue_notification("nvim.publish-to-parent", "{}")
     end
 end
 

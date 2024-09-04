@@ -1,5 +1,6 @@
 local vars_api = require("mux.api.internal.vars")
 local reg_api = require("mux.api.internal.reg")
+local notify_api = require("mux.api.internal.notify")
 
 return {
     get_all_vars = vars_api.get_all_vars,
@@ -14,4 +15,5 @@ return {
     add_reg_link = reg_api.add_reg_link,
     remove_reg_link = reg_api.remove_reg_link,
     list_reg_links = reg_api.list_reg_links,
+    mark_loaded = notify_api.mark_loaded,
 }

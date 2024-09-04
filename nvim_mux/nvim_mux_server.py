@@ -16,6 +16,8 @@ from jrpc_router.client_factory import connect_to_router
 from reg.api import AddLinkParams, RegLink, RegMethod, RemoveLinkParams
 from result import Err, Ok, Result
 
+from nvim_mux.nvim_api import Empty
+
 from .data import ParentInfo, ParentMux, ParentReg
 from .errors import NvimLuaApiError
 from .ext.api import SyncRegistersDownParams
@@ -129,6 +131,7 @@ async def run_mux_server(
             async with asyncio.TaskGroup() as tg:
                 tg.create_task(mux_impl.publish())
                 tg.create_task(ext_impl.sync_registers_down(SyncRegistersDownParams()))
+                tg.create_task(vim.call_no_error("mark_loaded", Empty))
 
             _LOGGER.info("Server started")
             try:

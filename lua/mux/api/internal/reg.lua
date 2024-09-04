@@ -5,7 +5,7 @@ local M = {
 }
 
 local types = require("mux.types")
-local coproc = require("mux.coproc")
+local notify_api = require("mux.api.internal.notify")
 local internal_types = require("mux.api.internal.types")
 
 local ok, empty_ok = internal_types.ok, internal_types.empty_ok
@@ -115,7 +115,10 @@ end
 ---Publish a sync for the given regname
 ---@param regname Regname
 function M.publish_sync(regname)
-    coproc.notify("nvim.publish-registers", string.format('{ "key": "%s" }', regname))
+    notify_api.queue_notification(
+        "nvim.publish-registers",
+        string.format('{ "key": "%s" }', regname)
+    )
 end
 
 return M
