@@ -116,7 +116,7 @@ class NvimMuxApiImpl(MuxApi):
                 case Err():
                     return
 
-            match await client.request(
+            match await client.notify(
                 MuxMethod.CLEAR_AND_REPLACE,
                 ClearAndReplaceParams(
                     location=self.parent_mux.location, namespace="INFO", values=session_info
