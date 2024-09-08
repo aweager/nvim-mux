@@ -11,7 +11,7 @@ from functools import partial
 from sys import argv, stderr
 
 import jrpc
-from jrpc.client_cache import ClientManager
+from jrpc.client import ClientManager
 from jrpc_router.client_factory import connect_to_router
 from reg.api import AddLinkParams, RegLink, RegMethod, RemoveLinkParams
 from result import Err, Ok, Result

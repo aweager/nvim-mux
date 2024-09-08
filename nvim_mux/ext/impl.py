@@ -2,8 +2,8 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
-from jrpc.client_cache import ClientManager
-from jrpc.service import JsonRpcProcessor, MethodSet, implements, make_method_set
+from jrpc.client import ClientManager
+from jrpc.service import MethodSet, implements, make_method_set
 from mux.api import ClearAndReplaceParams, MuxMethod
 from mux.errors import MuxApiError
 from reg.api import GetAllParams, GetAllResult, RegMethod

@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 
-from jrpc.client_cache import ClientManager
+from jrpc.client import ClientManager
 from mux.api import (
     ClearAndReplaceParams,
     ClearAndReplaceResult,
