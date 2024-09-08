@@ -48,6 +48,12 @@ function M.setup()
             end,
         })
 
+        vim.api.nvim_create_autocmd("VimEnter", {
+            group = augroup,
+            callback = function()
+                vim.defer_fn(api.publish, 100)
+            end,
+        })
         vim.api.nvim_create_autocmd("VimLeave", {
             group = augroup,
             callback = function()
