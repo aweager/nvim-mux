@@ -198,7 +198,7 @@ function M.set_multiple_vars(scope, id, namespace, values)
     for key, value in pairs(values) do
         mux[namespace][key] = value
         for _, callback in pairs(coalesce(custom_callbacks, namespace, key)) do
-            callback(location, key, value)
+            callback(location, namespace, key, value)
         end
     end
     dict.mux = mux

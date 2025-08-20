@@ -90,7 +90,7 @@ async def run_mux_server(
             stderr.write(msg)
             return Ok(1)
 
-    mux_clients = ClientManager(router.service_factory)
+    mux_clients = ClientManager(router.service_oneoff_factory)
     reg_clients = ClientManager(router.service_oneoff_factory)
 
     mux_impl = NvimMuxApiImpl(
